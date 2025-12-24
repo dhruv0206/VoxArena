@@ -266,13 +266,20 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
         if (!room) return;
 
         const handleTranscription = (
-            segments: { text: string; final: boolean }[],
+            segments: { text: string; final: boolean; id: string }[],
+            participant?: { identity: string; isAgent?: boolean },
         ) => {
             segments.forEach(segment => {
                 if (segment.final && segment.text.trim()) {
+                    // Determine if this is from the agent or user
+                    // Agent typically has "agent" in identity or isAgent flag
+                    const isAgent = participant?.isAgent ||
+                        participant?.identity?.toLowerCase().includes("agent") ||
+                        participant?.identity?.toLowerCase().includes("voxarena");
+
                     setTranscripts(prev => [...prev, {
-                        id: crypto.randomUUID(),
-                        speaker: "agent",
+                        id: segment.id || crypto.randomUUID(),
+                        speaker: isAgent ? "agent" : "user",
                         text: segment.text,
                         timestamp: new Date(),
                     }]);
