@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -15,9 +15,7 @@ import {
 import "@livekit/components-styles";
 import { ConnectionState, RoomEvent, TranscriptionSegment, Participant, TrackPublication } from "livekit-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
     Select,
     SelectContent,
@@ -26,6 +24,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import AbstractBall from "@/components/ui/abstract-ball";
+import "./preview.css";
 
 // Icons
 function MicrophoneIcon({ className }: { className?: string }) {
@@ -52,6 +52,14 @@ function PhoneOffIcon({ className }: { className?: string }) {
     );
 }
 
+function SparklesIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        </svg>
+    );
+}
+
 // Models configuration
 const sttModels = [
     { id: "deepgram-nova-2", name: "Deepgram Nova-2", provider: "Deepgram" },
@@ -65,98 +73,96 @@ const ttsModels = [
     { id: "resemble-custom", name: "Resemble AI", provider: "Resemble" },
 ];
 
-// Animated Voice Orb Component
-function VoiceOrb({ isActive, isSpeaking }: { isActive: boolean; isSpeaking: boolean }) {
+// Animated Waveform Component
+function AnimatedWaveform({ isActive, isListening }: { isActive: boolean; isListening: boolean }) {
+    const bars = 12;
     return (
-        <div className="relative flex items-center justify-center">
-            {/* Outer pulse rings */}
-            {isSpeaking && (
-                <>
-                    <div className="absolute w-24 h-24 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '1.5s' }} />
-                    <div className="absolute w-20 h-20 rounded-full bg-green-500/30 animate-ping" style={{ animationDuration: '1s' }} />
-                </>
-            )}
-            {/* Main orb */}
-            <div className={`
-                relative w-16 h-16 rounded-full flex items-center justify-center
-                ${isActive ? 'bg-green-500' : 'bg-gray-400'}
-                ${isSpeaking ? 'scale-110' : 'scale-100'}
-                transition-all duration-200 shadow-lg
-            `}>
-                <div className={`
-                    absolute inset-1 rounded-full bg-gradient-to-br from-white/30 to-transparent
-                `} />
+        <div className="flex items-center justify-center gap-[2px] h-8">
+            {Array.from({ length: bars }).map((_, i) => (
+                <div
+                    key={i}
+                    className="waveform-bar w-[3px] bg-white/60 rounded-full origin-center"
+                    style={{
+                        height: isActive ? '100%' : '30%',
+                        animationDelay: `${i * 0.05}s`,
+                        animationPlayState: isListening ? 'running' : 'paused',
+                        opacity: isActive ? 1 : 0.3,
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
+// Chat Bubble Component
+function ChatBubble({ text, isUser, timestamp }: { text: string; isUser: boolean; timestamp?: string }) {
+    return (
+        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} ${isUser ? 'chat-bubble-user' : 'chat-bubble-agent'}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-2 ${isUser
+                ? 'bg-white text-black'
+                : 'bg-white/10 text-white border border-white/20'
+                }`}>
+                <p className="text-sm leading-relaxed">{text}</p>
+                {timestamp && (
+                    <p className={`text-[10px] mt-1 ${isUser ? 'text-gray-500' : 'text-white/50'}`}>
+                        {timestamp}
+                    </p>
+                )}
             </div>
         </div>
     );
 }
 
-// Phone UI Component
-function PhoneUI({
-    title,
-    model,
-    isActive,
-    isSpeaking,
+// iPhone Mockup Component
+function IPhoneMockup({
+    children,
     time,
+    isConnected
 }: {
-    title: string;
-    model: string;
-    isActive: boolean;
-    isSpeaking: boolean;
+    children: React.ReactNode;
     time: string;
+    isConnected: boolean;
 }) {
     return (
-        <div className="relative w-full max-w-xs mx-auto">
-            {/* Phone Frame */}
-            <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl p-1 shadow-2xl">
-                <div className="bg-black rounded-[22px] overflow-hidden">
+        <div className="iphone-mockup">
+            <div className="iphone-frame">
+                {/* Side Buttons */}
+                <div className="iphone-button-silent" />
+                <div className="iphone-button-volume-up" />
+                <div className="iphone-button-volume-down" />
+                <div className="iphone-button-power" />
+
+                <div className="iphone-inner">
+                    {/* Dynamic Island */}
+                    <div className="dynamic-island">
+                        <div className="dynamic-island-camera" />
+                    </div>
+
                     {/* Status Bar */}
-                    <div className="flex items-center justify-between px-6 py-2 text-white text-xs">
-                        <span className="font-medium">{time}</span>
+                    <div className="iphone-status-bar">
+                        <span>{time}</span>
                         <div className="flex items-center gap-1">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
                             </svg>
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
-                            </svg>
+                            <div className="flex items-center">
+                                <div className="w-5 h-2.5 border border-white/70 rounded-sm relative">
+                                    <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '80%' }} />
+                                </div>
+                                <div className="w-0.5 h-1 bg-white/70 rounded-r-sm" />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="px-6 py-8 flex flex-col items-center min-h-[200px]">
-                        <VoiceOrb isActive={isActive} isSpeaking={isSpeaking} />
-
-                        <div className="mt-6 flex items-center justify-center">
-                            <MicrophoneIcon className="w-6 h-6 text-gray-400" />
-                        </div>
-
-                        <p className="mt-4 text-white text-sm font-medium">{title}</p>
-                        <p className="mt-1 text-gray-400 text-xs">Model: {model}</p>
+                    {/* Phone Content */}
+                    <div className="absolute inset-0 pt-[70px] pb-[25px] px-3 flex flex-col">
+                        {children}
                     </div>
+
+                    {/* Home Bar */}
+                    <div className="iphone-home-bar" />
                 </div>
             </div>
-        </div>
-    );
-}
-
-// Transcript Message Component
-function TranscriptMessage({
-    text,
-    isUser,
-}: {
-    text: string;
-    isUser: boolean;
-}) {
-    return (
-        <div className={`
-            px-4 py-2 rounded-2xl max-w-[90%] text-sm
-            ${isUser
-                ? 'bg-gray-700 text-white self-start'
-                : 'bg-green-500 text-white self-end'
-            }
-        `}>
-            {text}
         </div>
     );
 }
@@ -165,11 +171,12 @@ interface Transcript {
     id: string;
     speaker: "user" | "agent";
     text: string;
+    timestamp: string;
 }
 
 type ConnectionStateType = "idle" | "connecting" | "connected" | "error";
 
-// Preview Content Component
+// Preview Content Component (Inside LiveKitRoom)
 function PreviewContent({
     onDisconnect,
     selectedModel,
@@ -180,24 +187,27 @@ function PreviewContent({
     const room = useRoomContext();
     const connectionState = useConnectionState();
     const participants = useParticipants();
-    const [userTranscripts, setUserTranscripts] = useState<Transcript[]>([]);
-    const [agentTranscripts, setAgentTranscripts] = useState<Transcript[]>([]);
+    const [transcripts, setTranscripts] = useState<Transcript[]>([]);
     const [isUserSpeaking, setIsUserSpeaking] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
-    const [seconds, setSeconds] = useState(0);
-
-    // Timer
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setSeconds((prev) => prev + 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+    const chatRef = useRef<HTMLDivElement>(null);
 
     const formatTime = () => {
         const now = new Date();
+        return now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: false });
+    };
+
+    const formatTimestamp = () => {
+        const now = new Date();
         return now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     };
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        if (chatRef.current) {
+            chatRef.current.scrollTop = chatRef.current.scrollHeight;
+        }
+    }, [transcripts]);
 
     // Save transcript to backend
     const saveTranscriptToBackend = useCallback(async (text: string, speaker: "user" | "agent") => {
@@ -219,18 +229,17 @@ function PreviewContent({
         }
     }, [room?.name]);
 
-    // Listen for transcription events (Standard + DataPacket fallback)
+    // Listen for transcription events
     useEffect(() => {
         if (!room) return;
 
-        // Standard LiveKit Transcription Event
         const handleTranscription = (
             segments: TranscriptionSegment[],
             participant?: Participant,
             publication?: TrackPublication
         ) => {
             for (const segment of segments) {
-                if (!segment.final) continue; // Only show final transcripts for now
+                if (!segment.final) continue;
 
                 const isAgent = participant?.identity?.toLowerCase().includes("agent") || participant?.isAgent;
                 const speaker = isAgent ? "agent" : "user";
@@ -238,17 +247,16 @@ function PreviewContent({
                     id: segment.id,
                     speaker: speaker,
                     text: segment.text,
+                    timestamp: formatTimestamp(),
                 };
 
-                // Save to backend
                 saveTranscriptToBackend(segment.text, speaker);
+                setTranscripts((prev) => [...prev, transcript]);
 
-                if (transcript.speaker === "user") {
-                    setUserTranscripts((prev) => [...prev, transcript]);
+                if (speaker === "user") {
                     setIsUserSpeaking(true);
                     setTimeout(() => setIsUserSpeaking(false), 1500);
                 } else {
-                    setAgentTranscripts((prev) => [...prev, transcript]);
                     setIsAgentSpeaking(true);
                     setTimeout(() => setIsAgentSpeaking(false), 2000);
                 }
@@ -267,17 +275,16 @@ function PreviewContent({
                         id: crypto.randomUUID(),
                         speaker: speaker,
                         text: transcriptText,
+                        timestamp: formatTimestamp(),
                     };
 
-                    // Save to backend
                     saveTranscriptToBackend(transcriptText, speaker);
+                    setTranscripts((prev) => [...prev, transcript]);
 
-                    if (transcript.speaker === "user") {
-                        setUserTranscripts((prev) => [...prev, transcript]);
+                    if (speaker === "user") {
                         setIsUserSpeaking(true);
                         setTimeout(() => setIsUserSpeaking(false), 1500);
                     } else {
-                        setAgentTranscripts((prev) => [...prev, transcript]);
                         setIsAgentSpeaking(true);
                         setTimeout(() => setIsAgentSpeaking(false), 2000);
                     }
@@ -301,80 +308,81 @@ function PreviewContent({
         p.identity.toLowerCase().includes("agent") || p.isAgent
     );
 
+    const currentState = isAgentSpeaking ? "Speaking..." : isUserSpeaking ? "Listening..." : "Ready";
+
     return (
-        <div className="flex flex-col h-full">
-            {/* Status Bar */}
-            <div className="flex items-center justify-between p-4 border-b">
-                <div className="flex items-center gap-2">
-                    <Badge variant={isConnected ? "default" : "secondary"}>
-                        {isConnected ? "Connected" : "Connecting..."}
-                    </Badge>
-                    {agentConnected && (
-                        <Badge variant="outline" className="gap-1">
-                            🤖 Agent Active
-                        </Badge>
-                    )}
-                </div>
-                <Button variant="destructive" size="sm" onClick={onDisconnect} className="gap-2">
-                    <PhoneOffIcon className="h-4 w-4" />
-                    End Call
-                </Button>
+        <div className="flex-1 relative h-full w-full">
+            {/* Background Effects - Full Coverage */}
+            <div className="absolute inset-0 preview-bg-pattern" />
+            <div className="absolute inset-0 flex items-center justify-center">
+                <div className="radial-glow" />
             </div>
 
-            {/* Split View */}
-            <div className="flex-1 grid grid-cols-2 gap-4 p-4 overflow-hidden">
-                {/* Left Side - User */}
-                <div className="flex flex-col gap-4 h-full">
-                    <PhoneUI
-                        title="Voice Mode Active..."
-                        model="Deepgram Nova-2"
-                        isActive={isConnected}
-                        isSpeaking={isUserSpeaking}
-                        time={formatTime()}
-                    />
+            {/* iPhone Mockup - True Center */}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ paddingRight: '200px' }}>
+                <IPhoneMockup time={formatTime()} isConnected={isConnected}>
+                    {/* 3D Glob Visualization - Centered */}
+                    <div className="h-full flex flex-col items-center justify-center">
+                        <div style={{ width: '200px', height: '200px' }}>
+                            <AbstractBall
+                                key="preview-glob"
+                                perlinTime={isAgentSpeaking ? 30.0 : isUserSpeaking ? 20.0 : 50.0}
+                                perlinMorph={isAgentSpeaking ? 25.0 : isUserSpeaking ? 20.0 : 5.5}
+                                perlinDNoise={2.5}
+                                chromaRGBr={10.0}
+                                chromaRGBg={10.0}
+                                chromaRGBb={10.0}
+                                chromaRGBn={isAgentSpeaking || isUserSpeaking ? 0.5 : 0}
+                                chromaRGBm={1.0}
+                                cameraZoom={140}
+                                spherePoints={true}
+                                spherePsize={1.0}
+                                cameraSpeedY={0.5}
+                                cameraSpeedX={0.2}
+                            />
+                        </div>
+                        <p className="text-foreground text-base font-medium mt-4">Juniper</p>
+                        <p className="text-muted-foreground text-sm">Open and upbeat</p>
+                    </div>
+                </IPhoneMockup>
+            </div>
 
-                    {/* User Transcripts */}
-                    <Card className="flex-1 overflow-hidden">
-                        <CardContent className="p-4 h-full overflow-y-auto">
-                            <p className="text-xs text-muted-foreground mb-3 font-medium">Your Speech</p>
-                            <div className="flex flex-col gap-2">
-                                {userTranscripts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground italic">Start speaking...</p>
-                                ) : (
-                                    userTranscripts.map((t) => (
-                                        <TranscriptMessage key={t.id} text={t.text} isUser={true} />
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+            {/* Live Transcript Panel */}
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[360px] bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-4 max-h-[500px] overflow-y-auto flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-white font-semibold">Live Transcript</h3>
+                    <SparklesIcon className="w-4 h-4 text-white/50" />
                 </div>
-
-                {/* Right Side - Agent */}
-                <div className="flex flex-col gap-4 h-full">
-                    <PhoneUI
-                        title={isAgentSpeaking ? "Agent Replying..." : "Agent Listening..."}
-                        model="Resemble AI"
-                        isActive={agentConnected}
-                        isSpeaking={isAgentSpeaking}
-                        time={formatTime()}
-                    />
-
-                    {/* Agent Transcripts */}
-                    <Card className="flex-1 overflow-hidden">
-                        <CardContent className="p-4 h-full overflow-y-auto">
-                            <p className="text-xs text-muted-foreground mb-3 font-medium">Agent Response</p>
-                            <div className="flex flex-col gap-2">
-                                {agentTranscripts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground italic">Waiting for response...</p>
-                                ) : (
-                                    agentTranscripts.map((t) => (
-                                        <TranscriptMessage key={t.id} text={t.text} isUser={false} />
-                                    ))
-                                )}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    {transcripts.length === 0 ? (
+                        <p className="text-white/40 text-sm text-center py-8">
+                            Transcripts will appear here...
+                        </p>
+                    ) : (
+                        transcripts.map((t) => (
+                            <div key={t.id} className="flex gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${t.speaker === "agent"
+                                    ? "bg-white/10"
+                                    : "bg-white/10"
+                                    }`}>
+                                    {t.speaker === "agent" ? (
+                                        <SparklesIcon className="w-4 h-4 text-white" />
+                                    ) : (
+                                        <span className="text-xs text-white/70">You</span>
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-white/80 text-sm font-medium">
+                                            {t.speaker === "agent" ? "Juniper" : "User"}
+                                        </span>
+                                        <span className="text-white/40 text-xs">{t.timestamp}</span>
+                                    </div>
+                                    <p className="text-white/70 text-sm leading-relaxed">{t.text}</p>
+                                </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -429,7 +437,6 @@ export default function PreviewPage() {
     }, []);
 
     const handleDisconnect = useCallback(async () => {
-        // End the session in backend to track duration
         if (connectionData?.roomName) {
             try {
                 await fetch(
@@ -528,17 +535,17 @@ export default function PreviewPage() {
                         <div className="rounded-lg border bg-muted/50 p-3">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Current Pipeline</p>
                             <div className="flex items-center gap-1 text-xs">
-                                <Badge variant="outline" className="text-[10px]">Deepgram</Badge>
-                                <span>→</span>
-                                <Badge variant="outline" className="text-[10px]">Gemini</Badge>
-                                <span>→</span>
-                                <Badge variant="outline" className="text-[10px]">Resemble</Badge>
+                                <Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-400">Deepgram</Badge>
+                                <span className="text-white/30">→</span>
+                                <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-400">Gemini</Badge>
+                                <span className="text-white/30">→</span>
+                                <Badge variant="outline" className="text-[10px] border-green-500/50 text-green-400">Resemble</Badge>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Start Button */}
+                {/* Start/Stop Button */}
                 <div className="p-4 border-t">
                     {connectionState === "idle" && (
                         <Button className="w-full gap-2" onClick={startSession}>
@@ -548,12 +555,19 @@ export default function PreviewPage() {
                     )}
                     {connectionState === "connecting" && (
                         <Button className="w-full" disabled>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                             Connecting...
+                        </Button>
+                    )}
+                    {connectionState === "connected" && (
+                        <Button className="w-full gap-2 bg-red-500 hover:bg-red-600" onClick={handleDisconnect}>
+                            <PhoneOffIcon className="h-4 w-4" />
+                            Stop Preview
                         </Button>
                     )}
                     {connectionState === "error" && (
                         <div className="space-y-2">
-                            <p className="text-xs text-destructive">{error}</p>
+                            <p className="text-xs text-red-400">{error}</p>
                             <Button className="w-full" variant="outline" onClick={startSession}>
                                 Try Again
                             </Button>
@@ -563,23 +577,31 @@ export default function PreviewPage() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-hidden bg-background">
                 {/* Top Bar */}
                 <header className="h-14 border-b flex items-center justify-between px-6">
                     <h1 className="font-semibold">Model Testing Preview</h1>
-                    <ThemeToggle />
+                    <div className="flex items-center gap-2">
+                        {connectionState === "connected" && (
+                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                ● Live
+                            </Badge>
+                        )}
+                    </div>
                 </header>
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden relative">
                     {connectionState === "idle" && (
-                        <div className="h-full flex items-center justify-center">
-                            <div className="text-center">
-                                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                                    <MicrophoneIcon className="h-12 w-12 text-primary" />
+                        <div className="h-full flex items-center justify-center relative">
+                            <div className="preview-bg-pattern" />
+                            <div className="radial-glow" />
+                            <div className="text-center relative z-10">
+                                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center">
+                                    <MicrophoneIcon className="h-12 w-12 text-white" />
                                 </div>
-                                <h2 className="text-2xl font-bold mb-2">Model Preview</h2>
-                                <p className="text-muted-foreground max-w-md">
+                                <h2 className="text-2xl font-bold mb-2 text-white">Model Preview</h2>
+                                <p className="text-white/50 max-w-md">
                                     Test your voice pipeline in real-time. Select your models and start a preview session.
                                 </p>
                             </div>
@@ -587,10 +609,12 @@ export default function PreviewPage() {
                     )}
 
                     {connectionState === "connecting" && (
-                        <div className="h-full flex items-center justify-center">
-                            <div className="text-center">
-                                <div className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                                <p className="text-muted-foreground">Starting preview session...</p>
+                        <div className="h-full flex items-center justify-center relative">
+                            <div className="preview-bg-pattern" />
+                            <div className="radial-glow" />
+                            <div className="text-center relative z-10">
+                                <div className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+                                <p className="text-white/50">Starting preview session...</p>
                             </div>
                         </div>
                     )}
@@ -613,13 +637,14 @@ export default function PreviewPage() {
                     )}
 
                     {connectionState === "error" && (
-                        <div className="h-full flex items-center justify-center">
-                            <div className="text-center">
-                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <div className="h-full flex items-center justify-center relative">
+                            <div className="preview-bg-pattern" />
+                            <div className="text-center relative z-10">
+                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
                                     <span className="text-3xl">⚠️</span>
                                 </div>
-                                <p className="text-destructive font-medium">Connection Failed</p>
-                                <p className="text-muted-foreground mt-1">{error}</p>
+                                <p className="text-red-400 font-medium">Connection Failed</p>
+                                <p className="text-white/50 mt-1">{error}</p>
                             </div>
                         </div>
                     )}
