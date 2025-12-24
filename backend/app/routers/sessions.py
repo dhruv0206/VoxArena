@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
@@ -10,6 +10,7 @@ from app.schemas import (
     VoiceSessionUpdate,
     VoiceSessionResponse,
     TranscriptCreate,
+    TranscriptCreateByRoom,
     TranscriptResponse,
 )
 
@@ -31,27 +32,62 @@ def get_or_create_user(db: Session, clerk_id: str) -> User:
     return user
 
 
-@router.get("/", response_model=list[VoiceSessionResponse])
+@router.get("/")
 async def get_sessions(
     x_user_id: Optional[str] = Header(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Get all sessions for the authenticated user."""
+    """Get all sessions for the authenticated user with pagination and date filtering."""
+    from datetime import datetime
+    
     if not x_user_id:
         raise HTTPException(status_code=401, detail="User ID required")
     
     user = db.query(User).filter(User.clerk_id == x_user_id).first()
     if not user:
-        return []
+        return {"sessions": [], "total": 0, "page": page, "limit": limit}
     
+    # Build query
+    query = db.query(VoiceSession).filter(VoiceSession.user_id == user.id)
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(VoiceSession.created_at >= start_dt)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(VoiceSession.created_at <= end_dt)
+        except ValueError:
+            pass
+    
+    # Get total count
+    total = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * limit
     sessions = (
-        db.query(VoiceSession)
-        .filter(VoiceSession.user_id == user.id)
+        query
         .order_by(VoiceSession.created_at.desc())
-        .limit(50)
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return sessions
+    
+    return {
+        "sessions": [VoiceSessionResponse.model_validate(s) for s in sessions],
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
 
 
 @router.get("/{session_id}", response_model=VoiceSessionResponse)
@@ -176,4 +212,28 @@ async def end_session_by_room(room_name: str, db: Session = Depends(get_db)):
         db.refresh(session)
     
     return session
+
+
+@router.post("/by-room/{room_name}/transcripts", response_model=TranscriptResponse, status_code=201)
+async def add_transcript_by_room(
+    room_name: str,
+    transcript_data: TranscriptCreateByRoom,
+    db: Session = Depends(get_db),
+):
+    """Add a transcript to a session using room name."""
+    session = db.query(VoiceSession).filter(VoiceSession.room_name == room_name).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    transcript = Transcript(
+        id=str(uuid.uuid4()),
+        session_id=session.id,
+        content=transcript_data.content,
+        speaker=transcript_data.speaker,
+    )
+    db.add(transcript)
+    db.commit()
+    db.refresh(transcript)
+    return transcript
+
 

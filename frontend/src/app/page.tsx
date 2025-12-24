@@ -98,7 +98,9 @@ export default function Home() {
               <Link href="/dashboard">
                 <Button variant="ghost">Dashboard</Button>
               </Link>
-              <UserButton />
+              <div suppressHydrationWarning>
+                <UserButton />
+              </div>
             </SignedIn>
           </nav>
         </div>

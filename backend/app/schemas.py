@@ -99,6 +99,11 @@ class TranscriptCreate(TranscriptBase):
     session_id: str
 
 
+class TranscriptCreateByRoom(TranscriptBase):
+    """Transcript creation schema when using room name (session_id derived from room)."""
+    pass
+
+
 class TranscriptResponse(TranscriptBase):
     id: str
     session_id: str

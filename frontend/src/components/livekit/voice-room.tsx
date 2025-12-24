@@ -229,9 +229,28 @@ function CallDuration() {
     );
 }
 
-function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
+function RoomContent({ onDisconnect, roomName }: { onDisconnect: () => void; roomName: string }) {
     const room = useRoomContext();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+
+    // Function to save transcript to backend
+    const saveTranscriptToBackend = useCallback(async (text: string, speaker: "user" | "agent") => {
+        try {
+            await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/by-room/${roomName}/transcripts`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        content: text,
+                        speaker: speaker.toUpperCase(),
+                    }),
+                }
+            );
+        } catch (error) {
+            console.error("Failed to save transcript:", error);
+        }
+    }, [roomName]);
 
     // Listen for transcription data from the agent
     useEffect(() => {
@@ -243,12 +262,18 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
                 const data = JSON.parse(text);
 
                 if (data.type === "transcription" || data.type === "transcript") {
+                    const speaker = data.speaker === "agent" ? "agent" : "user";
+                    const transcriptText = data.text || data.content;
+
                     setTranscripts(prev => [...prev, {
                         id: crypto.randomUUID(),
-                        speaker: data.speaker === "agent" ? "agent" : "user",
-                        text: data.text || data.content,
+                        speaker: speaker,
+                        text: transcriptText,
                         timestamp: new Date(),
                     }]);
+
+                    // Save to backend
+                    saveTranscriptToBackend(transcriptText, speaker);
                 }
             } catch {
                 // Not JSON, might be raw text
@@ -259,7 +284,7 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
         return () => {
             room.off(RoomEvent.DataReceived, handleTranscription);
         };
-    }, [room]);
+    }, [room, saveTranscriptToBackend]);
 
     // Listen for agent transcription events (LiveKit Agent Builder format)
     useEffect(() => {
@@ -277,12 +302,17 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
                         participant?.identity?.toLowerCase().includes("agent") ||
                         participant?.identity?.toLowerCase().includes("voxarena");
 
+                    const speaker = isAgent ? "agent" : "user";
+
                     setTranscripts(prev => [...prev, {
                         id: segment.id || crypto.randomUUID(),
-                        speaker: isAgent ? "agent" : "user",
+                        speaker: speaker,
                         text: segment.text,
                         timestamp: new Date(),
                     }]);
+
+                    // Save to backend
+                    saveTranscriptToBackend(segment.text, speaker);
                 }
             });
         };
@@ -293,7 +323,7 @@ function RoomContent({ onDisconnect }: { onDisconnect: () => void }) {
             // @ts-ignore
             room.off("transcriptionReceived", handleTranscription);
         };
-    }, [room]);
+    }, [room, saveTranscriptToBackend]);
 
     return (
         <div className="flex flex-col items-center justify-center gap-6 p-8">
@@ -338,7 +368,7 @@ export function VoiceRoom({ token, serverUrl, roomName, onDisconnect }: VoiceRoo
             onDisconnected={onDisconnect}
             className="h-full"
         >
-            <RoomContent onDisconnect={onDisconnect} />
+            <RoomContent onDisconnect={onDisconnect} roomName={roomName} />
         </LiveKitRoom>
     );
 }

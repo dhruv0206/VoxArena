@@ -122,24 +122,26 @@ export default async function DashboardPage() {
 
     // Fetch real session data from backend
     let sessions: any[] = [];
+    let totalCalls = 0;
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/?limit=100`, {
             headers: {
                 'x-user-id': userId
             },
-            next: { revalidate: 10 } // Revalidate every 10 seconds
+            cache: 'no-store' // Always fetch fresh data
         });
         if (response.ok) {
-            sessions = await response.json();
+            const data = await response.json();
+            sessions = data.sessions || [];
+            totalCalls = data.total || sessions.length;
         }
     } catch (error) {
         console.error("Failed to fetch sessions:", error);
     }
 
     // Calculate metrics
-    const totalCalls = sessions.length;
-    const avgDuration = totalCalls > 0
-        ? Math.round(sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / totalCalls)
+    const avgDuration = sessions.length > 0
+        ? Math.round(sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / sessions.length)
         : 0;
 
     const formatDuration = (seconds: number) => {
@@ -346,27 +348,29 @@ export default async function DashboardPage() {
                                     <p className="text-sm">You don&apos;t have any calls yet</p>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {sessions.slice(0, 5).map((session) => (
-                                        <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                    <MicrophoneIcon className="h-5 w-5" />
+                                        <Link key={session.id} href={`/dashboard/logs/${session.id}`} className="block">
+                                            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                        <MicrophoneIcon className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-sm">{session.room_name}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {new Date(session.created_at).toLocaleString()}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">{session.room_name}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {new Date(session.created_at).toLocaleString()}
-                                                    </p>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-medium">{formatDuration(session.duration || 0)}</p>
+                                                    <Badge variant={session.status === 'completed' ? 'secondary' : 'default'} className="text-[10px] h-4">
+                                                        {session.status}
+                                                    </Badge>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-medium">{formatDuration(session.duration || 0)}</p>
-                                                <Badge variant={session.status === 'completed' ? 'secondary' : 'default'} className="text-[10px] h-4">
-                                                    {session.status}
-                                                </Badge>
-                                            </div>
-                                        </div>
+                                        </Link>
                                     ))}
                                 </div>
                             )}

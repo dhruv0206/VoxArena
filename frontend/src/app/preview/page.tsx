@@ -199,6 +199,26 @@ function PreviewContent({
         return now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     };
 
+    // Save transcript to backend
+    const saveTranscriptToBackend = useCallback(async (text: string, speaker: "user" | "agent") => {
+        if (!room?.name) return;
+        try {
+            await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/by-room/${room.name}/transcripts`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        content: text,
+                        speaker: speaker.toUpperCase(),
+                    }),
+                }
+            );
+        } catch (error) {
+            console.error("Failed to save transcript:", error);
+        }
+    }, [room?.name]);
+
     // Listen for transcription events (Standard + DataPacket fallback)
     useEffect(() => {
         if (!room) return;
@@ -213,11 +233,15 @@ function PreviewContent({
                 if (!segment.final) continue; // Only show final transcripts for now
 
                 const isAgent = participant?.identity?.toLowerCase().includes("agent") || participant?.isAgent;
+                const speaker = isAgent ? "agent" : "user";
                 const transcript: Transcript = {
                     id: segment.id,
-                    speaker: isAgent ? "agent" : "user",
+                    speaker: speaker,
                     text: segment.text,
                 };
+
+                // Save to backend
+                saveTranscriptToBackend(segment.text, speaker);
 
                 if (transcript.speaker === "user") {
                     setUserTranscripts((prev) => [...prev, transcript]);
@@ -237,11 +261,16 @@ function PreviewContent({
                 const data = JSON.parse(text);
 
                 if (data.type === "transcription" || data.type === "transcript") {
+                    const speaker = data.speaker === "agent" ? "agent" : "user";
+                    const transcriptText = data.text || data.content;
                     const transcript: Transcript = {
                         id: crypto.randomUUID(),
-                        speaker: data.speaker === "agent" ? "agent" : "user",
-                        text: data.text || data.content,
+                        speaker: speaker,
+                        text: transcriptText,
                     };
+
+                    // Save to backend
+                    saveTranscriptToBackend(transcriptText, speaker);
 
                     if (transcript.speaker === "user") {
                         setUserTranscripts((prev) => [...prev, transcript]);
@@ -265,7 +294,7 @@ function PreviewContent({
             room.off(RoomEvent.TranscriptionReceived, handleTranscription);
             room.off(RoomEvent.DataReceived, handleData);
         };
-    }, [room]);
+    }, [room, saveTranscriptToBackend]);
 
     const isConnected = connectionState === ConnectionState.Connected;
     const agentConnected = participants.some(p =>
