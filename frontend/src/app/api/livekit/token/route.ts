@@ -65,6 +65,22 @@ export async function POST(request: NextRequest) {
 
     const token = await at.toJwt();
 
+    // Create session in backend for tracking
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_name: roomName,
+          user_id: userId,
+          agent_id: null,
+        }),
+      });
+    } catch (sessionError) {
+      console.error("Failed to create session record:", sessionError);
+      // Don't fail the token request if session creation fails
+    }
+
     return NextResponse.json({
       token,
       wsUrl,

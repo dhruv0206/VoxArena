@@ -151,11 +151,23 @@ export default function VoicePage() {
         }
     }, []);
 
-    const handleDisconnect = useCallback(() => {
+    const handleDisconnect = useCallback(async () => {
+        // End the session in backend to track duration
+        if (connectionData?.roomName) {
+            try {
+                await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/by-room/${connectionData.roomName}/end`,
+                    { method: "POST" }
+                );
+            } catch (error) {
+                console.error("Failed to end session:", error);
+            }
+        }
+
         setConnectionState("idle");
         setConnectionData(null);
         toast.info("Disconnected from voice session");
-    }, []);
+    }, [connectionData]);
 
     return (
         <div className="flex h-screen bg-background">

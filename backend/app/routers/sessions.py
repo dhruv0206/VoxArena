@@ -141,3 +141,39 @@ async def add_transcript(
     db.commit()
     db.refresh(transcript)
     return transcript
+
+
+@router.get("/by-room/{room_name}", response_model=VoiceSessionResponse)
+async def get_session_by_room(room_name: str, db: Session = Depends(get_db)):
+    """Get a session by room name."""
+    session = db.query(VoiceSession).filter(VoiceSession.room_name == room_name).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.post("/by-room/{room_name}/end", response_model=VoiceSessionResponse)
+async def end_session_by_room(room_name: str, db: Session = Depends(get_db)):
+    """End a session by room name and calculate duration."""
+    from datetime import datetime
+    
+    session = db.query(VoiceSession).filter(VoiceSession.room_name == room_name).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Only update if session is still active
+    if session.status == SessionStatus.ACTIVE:
+        now = datetime.utcnow()
+        session.ended_at = now
+        session.status = SessionStatus.COMPLETED
+        
+        # Calculate duration in seconds
+        if session.started_at:
+            duration = int((now - session.started_at).total_seconds())
+            session.duration = duration
+        
+        db.commit()
+        db.refresh(session)
+    
+    return session
+
