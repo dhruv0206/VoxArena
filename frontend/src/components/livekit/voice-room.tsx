@@ -229,7 +229,7 @@ function CallDuration() {
     );
 }
 
-function RoomContent({ onDisconnect, roomName }: { onDisconnect: () => void; roomName: string }) {
+function RoomContent({ onDisconnect, roomName, agentName }: { onDisconnect: () => void; roomName: string; agentName: string }) {
     const room = useRoomContext();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
 
@@ -335,7 +335,7 @@ function RoomContent({ onDisconnect, roomName }: { onDisconnect: () => void; roo
                         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                             <BotIcon className="h-10 w-10 text-primary" />
                         </div>
-                        <h3 className="text-xl font-semibold">VoxArena Agent</h3>
+                        <h3 className="text-xl font-semibold">{agentName || "VoxArena Agent"}</h3>
                         <p className="text-muted-foreground text-sm mt-1">
                             Room: {room.name}
                         </p>
@@ -357,7 +357,7 @@ function RoomContent({ onDisconnect, roomName }: { onDisconnect: () => void; roo
     );
 }
 
-export function VoiceRoom({ token, serverUrl, roomName, onDisconnect }: VoiceRoomProps) {
+export function VoiceRoom({ token, serverUrl, roomName, onDisconnect, agentName }: { token: string; serverUrl: string; roomName: string; onDisconnect: () => void; agentName?: string }) {
     return (
         <LiveKitRoom
             token={token}
@@ -368,7 +368,7 @@ export function VoiceRoom({ token, serverUrl, roomName, onDisconnect }: VoiceRoo
             onDisconnected={onDisconnect}
             className="h-full"
         >
-            <RoomContent onDisconnect={onDisconnect} roomName={roomName} />
+            <RoomContent onDisconnect={onDisconnect} roomName={roomName} agentName={agentName || "VoxArena Agent"} />
         </LiveKitRoom>
     );
 }

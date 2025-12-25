@@ -73,6 +73,16 @@ const ttsModels = [
     { id: "resemble-custom", name: "Resemble AI", provider: "Resemble" },
 ];
 
+// Agent interface
+interface Agent {
+    id: string;
+    name: string;
+    type: string;
+}
+
+// Default agent
+const defaultAgent: Agent = { id: "default", name: "Default Agent", type: "PIPELINE" };
+
 // Animated Waveform Component
 function AnimatedWaveform({ isActive, isListening }: { isActive: boolean; isListening: boolean }) {
     const bars = 12;
@@ -180,9 +190,11 @@ type ConnectionStateType = "idle" | "connecting" | "connected" | "error";
 function PreviewContent({
     onDisconnect,
     selectedModel,
+    agentName,
 }: {
     onDisconnect: () => void;
     selectedModel: string;
+    agentName: string;
 }) {
     const room = useRoomContext();
     const connectionState = useConnectionState();
@@ -190,6 +202,7 @@ function PreviewContent({
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
     const [isUserSpeaking, setIsUserSpeaking] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+    const [callSeconds, setCallSeconds] = useState(0);
     const chatRef = useRef<HTMLDivElement>(null);
 
     const formatTime = () => {
@@ -208,6 +221,26 @@ function PreviewContent({
             chatRef.current.scrollTop = chatRef.current.scrollHeight;
         }
     }, [transcripts]);
+
+    // Call duration timer
+    useEffect(() => {
+        const connected = connectionState === ConnectionState.Connected;
+        if (connected) {
+            const interval = setInterval(() => {
+                setCallSeconds(prev => prev + 1);
+            }, 1000);
+            return () => clearInterval(interval);
+        } else {
+            setCallSeconds(0);
+        }
+    }, [connectionState]);
+
+    // Format call duration
+    const formatCallDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     // Save transcript to backend
     const saveTranscriptToBackend = useCallback(async (text: string, speaker: "user" | "agent") => {
@@ -341,14 +374,20 @@ function PreviewContent({
                                 cameraSpeedX={0.2}
                             />
                         </div>
-                        <p className="text-foreground text-base font-medium mt-4">Juniper</p>
-                        <p className="text-muted-foreground text-sm">Open and upbeat</p>
+                        <p className="text-foreground text-base font-medium mt-4">{agentName}</p>
+                        <p className="text-muted-foreground text-sm">AI Voice Agent</p>
+                        {isConnected && (
+                            <div className="flex items-center gap-2 mt-3">
+                                <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                                <span className="text-foreground font-mono text-sm">{formatCallDuration(callSeconds)}</span>
+                            </div>
+                        )}
                     </div>
                 </IPhoneMockup>
             </div>
 
             {/* Live Transcript Panel */}
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[360px] bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-4 max-h-[500px] overflow-y-auto flex flex-col">
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[360px] bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-4 max-h-[800px] overflow-y-auto flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-white font-semibold">Live Transcript</h3>
                     <SparklesIcon className="w-4 h-4 text-white/50" />
@@ -374,7 +413,7 @@ function PreviewContent({
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="text-white/80 text-sm font-medium">
-                                            {t.speaker === "agent" ? "Juniper" : "User"}
+                                            {t.speaker === "agent" ? agentName : "User"}
                                         </span>
                                         <span className="text-white/40 text-xs">{t.timestamp}</span>
                                     </div>
@@ -403,6 +442,41 @@ export default function PreviewPage() {
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Agent selection state
+    const [selectedAgent, setSelectedAgent] = useState<string>("default");
+    const [agents, setAgents] = useState<Agent[]>([defaultAgent]);
+    const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+
+    // Fetch user's agents from API
+    useEffect(() => {
+        async function fetchAgents() {
+            if (!userId) {
+                setIsLoadingAgents(false);
+                return;
+            }
+            try {
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/agents/`,
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-User-Id": userId,
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setAgents([defaultAgent, ...data]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch agents:", error);
+            } finally {
+                setIsLoadingAgents(false);
+            }
+        }
+        fetchAgents();
+    }, [userId]);
+
     const startSession = useCallback(async () => {
         setConnectionState("connecting");
         setError(null);
@@ -412,7 +486,7 @@ export default function PreviewPage() {
             const response = await fetch("/api/livekit/token", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roomName }),
+                body: JSON.stringify({ roomName, agentId: selectedAgent }),
             });
 
             if (!response.ok) {
@@ -434,7 +508,7 @@ export default function PreviewPage() {
             setConnectionState("error");
             toast.error("Connection failed", { description: message });
         }
-    }, []);
+    }, [selectedAgent]);
 
     const handleDisconnect = useCallback(async () => {
         if (connectionData?.roomName) {
@@ -477,6 +551,30 @@ export default function PreviewPage() {
 
                 {/* Model Selection */}
                 <div className="p-4 space-y-6 flex-1">
+                    {/* Agent Selection */}
+                    <div className="space-y-3">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Select Agent
+                        </Label>
+                        <Select value={selectedAgent} onValueChange={setSelectedAgent} disabled={isLoadingAgents}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={isLoadingAgents ? "Loading..." : "Select agent"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {agents.map((agent) => (
+                                    <SelectItem key={agent.id} value={agent.id}>
+                                        <div className="flex items-center gap-2">
+                                            <span>{agent.name}</span>
+                                            {agent.type && (
+                                                <span className="text-xs text-muted-foreground">({agent.type})</span>
+                                            )}
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="space-y-3">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Speech-to-Text
@@ -632,6 +730,7 @@ export default function PreviewPage() {
                             <PreviewContent
                                 onDisconnect={handleDisconnect}
                                 selectedModel={selectedModel}
+                                agentName={agents.find(a => a.id === selectedAgent)?.name || "AI Agent"}
                             />
                         </LiveKitRoom>
                     )}

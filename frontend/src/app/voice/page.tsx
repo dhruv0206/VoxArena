@@ -125,7 +125,7 @@ export default function VoicePage() {
             const response = await fetch("/api/livekit/token", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roomName }),
+                body: JSON.stringify({ roomName, agentId: selectedAgent }),
             });
 
             if (!response.ok) {
@@ -149,7 +149,7 @@ export default function VoicePage() {
             setConnectionState("error");
             toast.error("Connection failed", { description: message });
         }
-    }, []);
+    }, [selectedAgent]);
 
     const handleDisconnect = useCallback(async () => {
         // End the session in backend to track duration
@@ -335,6 +335,7 @@ export default function VoicePage() {
                                 serverUrl={connectionData.wsUrl}
                                 roomName={connectionData.roomName}
                                 onDisconnect={handleDisconnect}
+                                agentName={agents.find(a => a.id === selectedAgent)?.name}
                             />
                         </div>
                     )}

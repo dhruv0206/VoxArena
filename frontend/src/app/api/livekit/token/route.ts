@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { roomName } = await request.json();
+    const { roomName, agentId } = await request.json();
+    
+    console.log(`Token request: roomName=${roomName}, agentId=${agentId}`);
 
     if (!roomName) {
       return NextResponse.json(
@@ -38,12 +40,17 @@ export async function POST(request: NextRequest) {
     const agentDispatch = new AgentDispatchClient(wsUrl, apiKey, apiSecret);
     
     try {
-      // Create room if it doesn't exist
-      await roomService.createRoom({ name: roomName });
+      // Create room with agent config in metadata if it doesn't exist
+      const roomMetadata = agentId ? JSON.stringify({ agentId }) : undefined;
+      await roomService.createRoom({ 
+        name: roomName,
+        metadata: roomMetadata,
+      });
       
-      // Dispatch the agent to join this room
-      await agentDispatch.createDispatch(roomName, "voxarena-agent");
-      console.log(`Dispatched agent to room: ${roomName}`);
+      // Dispatch the agent to join this room with metadata
+      const dispatchMetadata = agentId ? JSON.stringify({ agentId }) : undefined;
+      await agentDispatch.createDispatch(roomName, "voxarena-agent", { metadata: dispatchMetadata });
+      console.log(`Dispatched agent to room: ${roomName} with agentId: ${agentId || 'none'}`);
     } catch (err) {
       // Room might already exist, that's okay
       console.log("Room/dispatch setup:", err);
