@@ -82,6 +82,7 @@ class VoiceSessionResponse(VoiceSessionBase):
     duration: Optional[int]
     user_id: str
     agent_id: Optional[str]
+    agent_name: Optional[str] = None  # Added for displaying agent name in UI
     created_at: datetime
     updated_at: datetime
 

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           room_name: roomName,
           user_id: userId,
-          agent_id: null,
+          agent_id: agentId && agentId !== "default" ? agentId : null,
         }),
       });
     } catch (sessionError) {

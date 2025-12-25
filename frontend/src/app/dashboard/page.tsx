@@ -238,8 +238,7 @@ export default async function DashboardPage() {
                         Settings
                     </Link>
                     <div className="flex items-center gap-3 px-3 py-2">
-                        <UserButton />
-                        <span className="text-sm truncate">{user?.firstName || "User"}</span>
+                        <UserButton showName />
                     </div>
                 </div>
             </aside>
@@ -357,7 +356,23 @@ export default async function DashboardPage() {
                                                         <MicrophoneIcon className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-sm">{session.room_name}</p>
+                                                        <p className="font-medium text-sm">
+                                                            {session.agent_name ? (
+                                                                <>
+                                                                    {session.agent_name}
+                                                                    <span className="text-muted-foreground ml-1 font-normal">
+                                                                        — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="font-medium">Call</span>
+                                                                    <span className="text-muted-foreground ml-1 font-normal">
+                                                                        — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </p>
                                                         <p className="text-xs text-muted-foreground">
                                                             {new Date(session.created_at).toLocaleString()}
                                                         </p>

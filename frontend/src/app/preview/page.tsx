@@ -557,17 +557,16 @@ export default function PreviewPage() {
                             Select Agent
                         </Label>
                         <Select value={selectedAgent} onValueChange={setSelectedAgent} disabled={isLoadingAgents}>
-                            <SelectTrigger>
-                                <SelectValue placeholder={isLoadingAgents ? "Loading..." : "Select agent"} />
+                            <SelectTrigger className="w-full">
+                                <span className="truncate block w-[260px] text-left">
+                                    <SelectValue placeholder={isLoadingAgents ? "Loading..." : "Select agent"} />
+                                </span>
                             </SelectTrigger>
                             <SelectContent>
                                 {agents.map((agent) => (
                                     <SelectItem key={agent.id} value={agent.id}>
                                         <div className="flex items-center gap-2">
                                             <span>{agent.name}</span>
-                                            {agent.type && (
-                                                <span className="text-xs text-muted-foreground">({agent.type})</span>
-                                            )}
                                         </div>
                                     </SelectItem>
                                 ))}

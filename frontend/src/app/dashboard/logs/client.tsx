@@ -61,6 +61,7 @@ interface Session {
     status: string;
     duration: number | null;
     created_at: string;
+    agent_name?: string;
 }
 
 interface PaginatedResponse {
@@ -213,7 +214,23 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                                                 <MicrophoneIcon className="h-5 w-5 text-primary" />
                                             </div>
                                             <div>
-                                                <p className="font-medium">{session.room_name}</p>
+                                                <p className="font-medium">
+                                                    {session.agent_name ? (
+                                                        <>
+                                                            {session.agent_name}
+                                                            <span className="text-muted-foreground ml-2 font-normal text-sm">
+                                                                — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            Call
+                                                            <span className="text-muted-foreground ml-2 font-normal text-sm">
+                                                                — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </p>
                                                 <p className="text-sm text-muted-foreground">
                                                     {new Date(session.created_at).toLocaleString()}
                                                 </p>

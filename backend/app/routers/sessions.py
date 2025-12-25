@@ -81,9 +81,17 @@ async def get_sessions(
         .limit(limit)
         .all()
     )
+    # Build session responses with agent names
+    session_responses = []
+    for s in sessions:
+        response = VoiceSessionResponse.model_validate(s)
+        # Populate agent_name from the agent relationship
+        if s.agent:
+            response.agent_name = s.agent.name
+        session_responses.append(response)
     
     return {
-        "sessions": [VoiceSessionResponse.model_validate(s) for s in sessions],
+        "sessions": session_responses,
         "total": total,
         "page": page,
         "limit": limit,

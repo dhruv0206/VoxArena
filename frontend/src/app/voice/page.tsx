@@ -195,9 +195,11 @@ export default function VoicePage() {
                 <div className="p-4 space-y-4 flex-1">
                     <div className="space-y-2">
                         <Label>Select Agent</Label>
-                        <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                            <SelectTrigger>
-                                <SelectValue />
+                        <Select value={selectedAgent} onValueChange={setSelectedAgent} disabled={isLoadingAgents}>
+                            <SelectTrigger className="w-full">
+                                <span className="truncate block w-[220px] text-left">
+                                    <SelectValue />
+                                </span>
                             </SelectTrigger>
                             <SelectContent>
                                 {isLoadingAgents ? (
@@ -210,9 +212,6 @@ export default function VoicePage() {
                                             <div className="flex items-center gap-2">
                                                 <BotIcon className="h-4 w-4" />
                                                 {agent.name}
-                                                {agent.id !== "default" && (
-                                                    <span className="text-xs text-muted-foreground">({agent.type})</span>
-                                                )}
                                             </div>
                                         </SelectItem>
                                     ))

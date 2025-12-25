@@ -46,6 +46,7 @@ interface Session {
     ended_at: string | null;
     duration: number | null;
     created_at: string;
+    agent_name?: string;
 }
 
 interface Transcript {
@@ -124,7 +125,12 @@ export default async function CallDetailsPage({
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold">Call Details</h1>
-                        <p className="text-muted-foreground">{session.room_name}</p>
+                        <p className="text-muted-foreground">
+                            {session.agent_name
+                                ? `${session.agent_name} — ID: ${session.room_name.replace(/^(preview-|voxarena-)/, '')}`
+                                : `Call — ID: ${session.room_name.replace(/^(preview-|voxarena-)/, '')}`
+                            }
+                        </p>
                     </div>
                 </div>
 
