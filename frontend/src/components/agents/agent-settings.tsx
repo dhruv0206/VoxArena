@@ -75,7 +75,7 @@ interface AgentSettingsProps {
 }
 
 const LLM_MODELS = [
-    { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Experimental)" },
+    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
     { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
     { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
 ];
@@ -111,7 +111,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
 
     // Form state
     const [name, setName] = useState(agent.name);
-    const [llmModel, setLlmModel] = useState(agent.config?.llm_model || "gemini-2.0-flash-exp");
+    const [llmModel, setLlmModel] = useState(agent.config?.llm_model || "gemini-2.5-flash");
     const [firstMessageMode, setFirstMessageMode] = useState(agent.config?.first_message_mode || "assistant_speaks_first");
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");

@@ -151,7 +151,7 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
                             first_message: selectedTemplate.firstMessage,
                             first_message_mode: "assistant_speaks_first",
                             llm_provider: "gemini",
-                            llm_model: "gemini-2.0-flash-exp",
+                            llm_model: "gemini-2.5-flash",
                             template: selectedTemplate.id,
                             voice_provider: "resemble",
                             voice_id: selectedVoice,

@@ -79,7 +79,7 @@ python agent.py start
 
 ```python
 llm_instance = google.LLM(
-    model="gemini-1.5-pro",  # or gemini-2.0-flash-exp
+    model="gemini-2.5-flash", 
     temperature=0.7,
 )
 ```
