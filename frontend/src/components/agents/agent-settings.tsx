@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/select";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WebhookConfig, WebhookConfigState } from "./webhook-config";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -64,6 +65,7 @@ interface Agent {
         llm_provider?: string;
         llm_model?: string;
         template?: string;
+        webhooks?: WebhookConfigState;
     };
 }
 
@@ -83,6 +85,25 @@ const FIRST_MESSAGE_MODES = [
     { id: "assistant_waits", name: "Assistant waits for user" },
 ];
 
+const DEFAULT_WEBHOOK_CONFIG: WebhookConfigState = {
+    pre_call: {
+        enabled: false,
+        url: "",
+        method: "GET",
+        timeout: 5,
+        headers: [],
+        assignments: [],
+    },
+    post_call: {
+        enabled: false,
+        url: "",
+        method: "POST",
+        timeout: 10,
+        headers: [],
+        body: "",
+    },
+};
+
 export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
@@ -94,6 +115,11 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [firstMessageMode, setFirstMessageMode] = useState(agent.config?.first_message_mode || "assistant_speaks_first");
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");
+
+    // Webhook state
+    const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
+        agent.config?.webhooks || DEFAULT_WEBHOOK_CONFIG
+    );
 
     const handleSave = useCallback(async () => {
         setIsSaving(true);
@@ -115,6 +141,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             first_message_mode: firstMessageMode,
                             llm_provider: "gemini",
                             llm_model: llmModel,
+                            webhooks: webhookConfig,
                         },
                     }),
                 }
@@ -131,7 +158,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
         } finally {
             setIsSaving(false);
         }
-    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel]);
+    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, webhookConfig]);
 
     const handleTestCall = () => {
         // Navigate to preview page (could pass agent ID in future)
@@ -178,11 +205,12 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
 
             {/* Tabs */}
             <Tabs defaultValue="model" className="w-full">
-                <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+                <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
                     <TabsTrigger value="model">Model</TabsTrigger>
                     <TabsTrigger value="voice">Voice</TabsTrigger>
                     <TabsTrigger value="transcriber">Transcriber</TabsTrigger>
                     <TabsTrigger value="tools">Tools</TabsTrigger>
+                    <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
                     <TabsTrigger value="analysis">Analysis</TabsTrigger>
                     <TabsTrigger value="compliance">Compliance</TabsTrigger>
                     <TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -342,6 +370,11 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             </p>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Webhooks Tab */}
+                <TabsContent value="webhooks" className="mt-6">
+                    <WebhookConfig config={webhookConfig} onChange={setWebhookConfig} />
                 </TabsContent>
 
                 {/* Analysis Tab */}

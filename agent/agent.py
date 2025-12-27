@@ -101,12 +101,61 @@ async def entrypoint(ctx: agents.JobContext):
             system_prompt = config.get("system_prompt") or DEFAULT_INSTRUCTIONS
             first_message = config.get("first_message") or first_message
             voice_id = config.get("voice_id")
-            logger.info(f"Using agent config: voice_id={voice_id}, first_message={first_message[:50] if first_message else 'None'}...")
-        else:
-            logger.warning(f"Could not fetch agent config for agent_id: {agent_id}")
-    else:
-        logger.info(f"No valid agent_id found, using defaults. agent_id={agent_id}")
-    
+            
+            # --- WEBHOOKS SUPPORT ---
+            webhooks = config.get("webhooks", {})
+            
+            # Pre-call Webhook
+            pre_call = webhooks.get("pre_call", {})
+            if pre_call.get("enabled"):
+                logger.info("Executing pre-call webhook...")
+                try:
+                    payload = {
+                        "agent_id": agent_id,
+                        "room_name": ctx.room.name,
+                        "user_id": metadata.get("userId"), # From room metadata
+                        "event": "pre_call"
+                    }
+                    
+                    response_data = await execute_webhook(
+                        url=pre_call.get("url"),
+                        method=pre_call.get("method", "GET"),
+                        headers=pre_call.get("headers", []),
+                        body=payload if pre_call.get("method") == "POST" else None,
+                        timeout=pre_call.get("timeout", 5)
+                    )
+                    
+                    # Handle Assignments
+                    if response_data and pre_call.get("assignments"):
+                        variables = {}
+                        for assignment in pre_call.get("assignments", []):
+                            # Simple path traversal (e.g. key.subkey)
+                            value = response_data
+                            for key in assignment["path"].split("."):
+                                if isinstance(value, dict):
+                                    value = value.get(key)
+                                else:
+                                    value = None
+                                    break
+                            if value is not None:
+                                variables[assignment["variable"]] = str(value)
+                        
+                        logger.info(f"Webhook assignments: {variables}")
+                        
+                        # Apply variables to prompts
+                        if variables:
+                            try:
+                                # Use safe substitution that ignores missing keys
+                                for key, val in variables.items():
+                                    placeholder = "{{" + key + "}}"
+                                    system_prompt = system_prompt.replace(placeholder, val)
+                                    first_message = first_message.replace(placeholder, val)
+                            except Exception as e:
+                                logger.error(f"Error applying webhook variables: {e}")
+
+                except Exception as e:
+                    logger.error(f"Pre-call webhook failed: {e}")
+
     # Create TTS with the configured voice
     tts = ResembleTTS(voice_uuid=voice_id) if voice_id else ResembleTTS()
     
@@ -128,6 +177,82 @@ async def entrypoint(ctx: agents.JobContext):
     await session.generate_reply(
         instructions=f"Say this exact greeting: {first_message}"
     )
+
+    # Wait for the session to run until shutdown (disconnection)
+    try:
+        await ctx.wait_for_shutdown()
+    except Exception:
+        pass
+
+    # --- POST-CALL WEBHOOK EXECUTION ---
+    # This runs after the room is disconnected/shutdown
+    if agent_config:
+         webhooks = agent_config.get("config", {}).get("webhooks", {})
+         post_call = webhooks.get("post_call", {})
+         
+         if post_call.get("enabled"):
+            logger.info("Executing post-call webhook...")
+            try:
+                # Context variables
+                variables = {
+                    "agent_id": agent_id,
+                    "room_name": ctx.room.name,
+                    "user_id": metadata.get("userId") if metadata else None,
+                    "reason": "disconnected", # Generic reason as detailed reason might not be available
+                }
+                
+                # Construct body
+                body_template = post_call.get("body", "{}")
+                body_str = body_template
+                for key, val in variables.items():
+                    placeholder = "{{" + key + "}}"
+                    if body_str:
+                        body_str = body_str.replace(placeholder, str(val))
+                
+                req_body = None
+                try:
+                    if body_str:
+                        req_body = json.loads(body_str)
+                    else:
+                        req_body = variables # Default payload
+                except:
+                    req_body = variables
+
+                await execute_webhook(
+                    url=post_call.get("url"),
+                    method=post_call.get("method", "POST"),
+                    headers=post_call.get("headers", []),
+                    body=req_body,
+                    timeout=post_call.get("timeout", 10)
+                )
+                logger.info("Post-call webhook executed successfully.")
+            except Exception as e:
+                logger.error(f"Post-call webhook failed: {e}")
+
+async def execute_webhook(url: str, method: str, headers: list, body: dict | None, timeout: int) -> dict | None:
+    """Execute a webhook request."""
+    if not url:
+        return None
+        
+    try:
+        # Convert list of headers to dict
+        header_dict = {h["key"]: h["value"] for h in headers if h["key"]}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method=method,
+                url=url,
+                headers=header_dict,
+                json=body,
+                timeout=timeout
+            )
+            response.raise_for_status()
+            if response.headers.get("content-type") == "application/json":
+                return response.json()
+            return None
+    except Exception as e:
+        logger.error(f"Webhook request failed to {url}: {e}")
+        raise e
 
 
 if __name__ == "__main__":
