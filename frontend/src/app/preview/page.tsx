@@ -11,6 +11,7 @@ import {
     useRoomContext,
     useConnectionState,
     useParticipants,
+    useLocalParticipant,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { ConnectionState, RoomEvent, TranscriptionSegment, Participant, TrackPublication } from "livekit-client";
@@ -32,6 +33,14 @@ function MicrophoneIcon({ className }: { className?: string }) {
     return (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+        </svg>
+    );
+}
+
+function MicrophoneOffIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3zM2.25 2.25l19.5 19.5" />
         </svg>
     );
 }
@@ -199,11 +208,21 @@ function PreviewContent({
     const room = useRoomContext();
     const connectionState = useConnectionState();
     const participants = useParticipants();
+    const { localParticipant } = useLocalParticipant();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
     const [isUserSpeaking, setIsUserSpeaking] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
     const [callSeconds, setCallSeconds] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
     const chatRef = useRef<HTMLDivElement>(null);
+
+    // Toggle microphone
+    const toggleMicrophone = useCallback(async () => {
+        if (localParticipant) {
+            await localParticipant.setMicrophoneEnabled(isMuted);
+            setIsMuted(!isMuted);
+        }
+    }, [localParticipant, isMuted]);
 
     const formatTime = () => {
         const now = new Date();
@@ -352,7 +371,7 @@ function PreviewContent({
             </div>
 
             {/* iPhone Mockup - True Center */}
-            <div className="absolute inset-0 flex items-center justify-center" style={{ paddingRight: '200px' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingRight: '200px' }}>
                 <IPhoneMockup time={formatTime()} isConnected={isConnected}>
                     {/* 3D Glob Visualization - Centered */}
                     <div className="h-full flex flex-col items-center justify-center">
@@ -384,6 +403,30 @@ function PreviewContent({
                         )}
                     </div>
                 </IPhoneMockup>
+
+                {/* Control Bar below phone */}
+                <div className="flex items-center justify-center gap-4 mt-6">
+                    <Button
+                        variant={isMuted ? "destructive" : "secondary"}
+                        size="lg"
+                        className="h-14 w-14 rounded-full"
+                        onClick={toggleMicrophone}
+                    >
+                        {isMuted ? (
+                            <MicrophoneOffIcon className="h-6 w-6" />
+                        ) : (
+                            <MicrophoneIcon className="h-6 w-6" />
+                        )}
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="lg"
+                        className="h-14 w-14 rounded-full"
+                        onClick={onDisconnect}
+                    >
+                        <PhoneOffIcon className="h-6 w-6" />
+                    </Button>
+                </div>
             </div>
 
             {/* Live Transcript Panel */}
