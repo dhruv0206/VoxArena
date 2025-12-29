@@ -92,46 +92,6 @@ interface Agent {
 // Default agent
 const defaultAgent: Agent = { id: "default", name: "Default Agent", type: "PIPELINE" };
 
-// Animated Waveform Component
-function AnimatedWaveform({ isActive, isListening }: { isActive: boolean; isListening: boolean }) {
-    const bars = 12;
-    return (
-        <div className="flex items-center justify-center gap-[2px] h-8">
-            {Array.from({ length: bars }).map((_, i) => (
-                <div
-                    key={i}
-                    className="waveform-bar w-[3px] bg-white/60 rounded-full origin-center"
-                    style={{
-                        height: isActive ? '100%' : '30%',
-                        animationDelay: `${i * 0.05}s`,
-                        animationPlayState: isListening ? 'running' : 'paused',
-                        opacity: isActive ? 1 : 0.3,
-                    }}
-                />
-            ))}
-        </div>
-    );
-}
-
-// Chat Bubble Component
-function ChatBubble({ text, isUser, timestamp }: { text: string; isUser: boolean; timestamp?: string }) {
-    return (
-        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} ${isUser ? 'chat-bubble-user' : 'chat-bubble-agent'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-2 ${isUser
-                ? 'bg-white text-black'
-                : 'bg-white/10 text-white border border-white/20'
-                }`}>
-                <p className="text-sm leading-relaxed">{text}</p>
-                {timestamp && (
-                    <p className={`text-[10px] mt-1 ${isUser ? 'text-gray-500' : 'text-white/50'}`}>
-                        {timestamp}
-                    </p>
-                )}
-            </div>
-        </div>
-    );
-}
-
 // iPhone Mockup Component
 function IPhoneMockup({
     children,
