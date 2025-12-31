@@ -170,6 +170,7 @@ function PreviewContent({
     const participants = useParticipants();
     const { localParticipant } = useLocalParticipant();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+    const [liveTranscript, setLiveTranscript] = useState<{ speaker: "user" | "agent"; text: string } | null>(null);
     const [isUserSpeaking, setIsUserSpeaking] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
     const [callSeconds, setCallSeconds] = useState(0);
@@ -251,26 +252,38 @@ function PreviewContent({
             publication?: TrackPublication
         ) => {
             for (const segment of segments) {
-                if (!segment.final) continue;
-
                 const isAgent = participant?.identity?.toLowerCase().includes("agent") || participant?.isAgent;
                 const speaker = isAgent ? "agent" : "user";
-                const transcript: Transcript = {
-                    id: segment.id,
-                    speaker: speaker,
-                    text: segment.text,
-                    timestamp: formatTimestamp(),
-                };
 
-                saveTranscriptToBackend(segment.text, speaker);
-                setTranscripts((prev) => [...prev, transcript]);
-
+                // Update speaking state
                 if (speaker === "user") {
                     setIsUserSpeaking(true);
-                    setTimeout(() => setIsUserSpeaking(false), 1500);
                 } else {
                     setIsAgentSpeaking(true);
-                    setTimeout(() => setIsAgentSpeaking(false), 2000);
+                }
+
+                if (!segment.final) {
+                    // Show interim transcript (live typing)
+                    setLiveTranscript({ speaker, text: segment.text });
+                } else {
+                    // Final transcript - add to history and clear live
+                    setLiveTranscript(null);
+                    const transcript: Transcript = {
+                        id: segment.id,
+                        speaker: speaker,
+                        text: segment.text,
+                        timestamp: formatTimestamp(),
+                    };
+
+                    saveTranscriptToBackend(segment.text, speaker);
+                    setTranscripts((prev) => [...prev, transcript]);
+
+                    // Clear speaking state after delay
+                    if (speaker === "user") {
+                        setTimeout(() => setIsUserSpeaking(false), 500);
+                    } else {
+                        setTimeout(() => setIsAgentSpeaking(false), 500);
+                    }
                 }
             }
         };
@@ -390,40 +403,69 @@ function PreviewContent({
             </div>
 
             {/* Live Transcript Panel */}
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[360px] bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-4 max-h-[800px] overflow-y-auto flex flex-col">
-                <div className="flex items-center justify-between mb-4">
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-[360px] bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 max-h-[70vh] flex flex-col">
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <h3 className="text-white font-semibold">Live Transcript</h3>
                     <SparklesIcon className="w-4 h-4 text-white/50" />
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                    {transcripts.length === 0 ? (
+                <div className="flex-1 overflow-y-auto space-y-4 px-1 pt-1" ref={chatRef}>
+                    {transcripts.length === 0 && !liveTranscript ? (
                         <p className="text-white/40 text-sm text-center py-8">
                             Transcripts will appear here...
                         </p>
                     ) : (
-                        transcripts.map((t) => (
-                            <div key={t.id} className="flex gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${t.speaker === "agent"
-                                    ? "bg-white/10"
-                                    : "bg-white/10"
-                                    }`}>
-                                    {t.speaker === "agent" ? (
-                                        <SparklesIcon className="w-4 h-4 text-white" />
-                                    ) : (
-                                        <span className="text-xs text-white/70">You</span>
-                                    )}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-white/80 text-sm font-medium">
-                                            {t.speaker === "agent" ? agentName : "User"}
-                                        </span>
-                                        <span className="text-white/40 text-xs">{t.timestamp}</span>
+                        <>
+                            {transcripts.map((t) => (
+                                <div key={t.id} className="flex gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${t.speaker === "agent"
+                                        ? "bg-white/10"
+                                        : "bg-white/10"
+                                        }`}>
+                                        {t.speaker === "agent" ? (
+                                            <SparklesIcon className="w-4 h-4 text-white" />
+                                        ) : (
+                                            <span className="text-xs text-white/70">You</span>
+                                        )}
                                     </div>
-                                    <p className="text-white/70 text-sm leading-relaxed">{t.text}</p>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-white/80 text-sm font-medium">
+                                                {t.speaker === "agent" ? agentName : "User"}
+                                            </span>
+                                            <span className="text-white/40 text-xs">{t.timestamp}</span>
+                                        </div>
+                                        <p className="text-white/70 text-sm leading-relaxed">{t.text}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            ))}
+                            {/* Live typing indicator */}
+                            {liveTranscript && (
+                                <div className="flex gap-3 animate-pulse">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${liveTranscript.speaker === "agent"
+                                        ? "bg-primary/20 ring-2 ring-primary/50"
+                                        : "bg-blue-500/20 ring-2 ring-blue-500/50"
+                                        }`}>
+                                        {liveTranscript.speaker === "agent" ? (
+                                            <SparklesIcon className="w-4 h-4 text-primary" />
+                                        ) : (
+                                            <span className="text-xs text-blue-400">You</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-white text-sm font-medium">
+                                                {liveTranscript.speaker === "agent" ? agentName : "User"}
+                                            </span>
+                                            <span className="text-primary text-xs">speaking...</span>
+                                        </div>
+                                        <p className="text-white text-sm leading-relaxed">
+                                            {liveTranscript.text}
+                                            <span className="inline-block w-px h-4 bg-white ml-0.5 animate-pulse" />
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

@@ -82,7 +82,7 @@ export default function Home() {
               <MicrophoneIcon className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold">VoxArena</span>
-            <Badge variant="secondary" className="ml-2">Open Source</Badge>
+            {/* <Badge variant="secondary" className="ml-2">Open Source</Badge> */}
           </div>
           <nav className="flex items-center gap-4">
             <ThemeToggle />
@@ -115,7 +115,7 @@ export default function Home() {
           <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
             Where Voice Agents
             <span className="block bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-              Compete & Collaborate
+              Collaborate
             </span>
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
@@ -138,12 +138,12 @@ export default function Home() {
                 </Button>
               </Link>
             </SignedIn>
-            <Button variant="outline" size="lg" className="gap-2" asChild>
+            {/* <Button variant="outline" size="lg" className="gap-2" asChild>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer">
                 <GithubIcon className="h-4 w-4" />
                 View on GitHub
               </a>
-            </Button>
+            </Button> */}
           </div>
         </section>
 
