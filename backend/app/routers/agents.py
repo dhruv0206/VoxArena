@@ -38,7 +38,7 @@ async def get_agents(
     if not user:
         return []
     
-    agents = db.query(Agent).filter(Agent.user_id == user.id).order_by(Agent.created_at.desc()).all()
+    agents = db.query(Agent).filter(Agent.user_id == user.id, Agent.is_active == True).order_by(Agent.created_at.desc()).all()
     return agents
 
 
@@ -92,11 +92,12 @@ async def update_agent(
 
 @router.delete("/{agent_id}", status_code=204)
 async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
-    """Delete an agent."""
+    """Soft delete an agent (sets is_active to False)."""
     agent = db.query(Agent).filter(Agent.id == agent_id).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    db.delete(agent)
+    # Soft delete: mark as inactive instead of removing
+    agent.is_active = False
     db.commit()
     return None
