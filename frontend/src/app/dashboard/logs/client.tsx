@@ -95,7 +95,8 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
             // datetime-local gives local time, but DB stores UTC and displays convert to local
             // So we treat the input as if it's already UTC (user sees local, filters local)
             if (startDate) params.append("start_date", startDate + ":00.000Z");
-            if (endDate) params.append("end_date", endDate + ":00.000Z");
+            // Add 59 seconds to end date to include the full minute (12:00 AM includes 12:00:59)
+            if (endDate) params.append("end_date", endDate + ":59.999Z");
 
             const response = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/?${params}`,
