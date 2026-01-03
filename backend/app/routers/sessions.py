@@ -54,10 +54,12 @@ async def get_sessions(
     # Build query
     query = db.query(VoiceSession).filter(VoiceSession.user_id == user.id)
     
-    # Apply date filters
+    # Apply date filters (convert to naive UTC for comparison with DB)
     if start_date:
         try:
             start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            # Convert to naive datetime for comparison with naive DB timestamps
+            start_dt = start_dt.replace(tzinfo=None)
             query = query.filter(VoiceSession.created_at >= start_dt)
         except ValueError:
             pass
@@ -65,6 +67,8 @@ async def get_sessions(
     if end_date:
         try:
             end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            # Convert to naive datetime for comparison with naive DB timestamps
+            end_dt = end_dt.replace(tzinfo=None)
             query = query.filter(VoiceSession.created_at <= end_dt)
         except ValueError:
             pass

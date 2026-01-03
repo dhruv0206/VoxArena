@@ -1,0 +1,84 @@
+# VoxArena Docker Compose
+# Usage: docker-compose up -d --build
+version: "3.8"
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: voxarena-db
+    environment:
+      POSTGRES_DB: voxarena
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================
+  # Backend API (FastAPI)
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: voxarena-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override DATABASE_URL for Docker networking
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voxarena
+      - DB_HOST=postgres
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================
+  # Voice Agent (LiveKit)
+  # ============================================
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: voxarena-agent
+    env_file:
+      - ./agent/.env
+    environment:
+      - BACKEND_API_URL=http://backend:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ============================================
+  # Frontend (Next.js)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: voxarena-frontend
+    env_file:
+      - ./frontend/.env
+    environment:
+      # Server-side API URL for Docker container networking
+      - INTERNAL_API_URL=http://backend:8000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

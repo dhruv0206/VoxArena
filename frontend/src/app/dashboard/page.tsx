@@ -124,7 +124,8 @@ export default async function DashboardPage() {
     let sessions: any[] = [];
     let totalCalls = 0;
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/?limit=100`, {
+        const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/sessions/?limit=100`, {
             headers: {
                 'x-user-id': userId
             },

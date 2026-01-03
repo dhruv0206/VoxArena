@@ -13,8 +13,9 @@ export default async function AgentsPage() {
     // Fetch agents from backend API
     let agents: any[] = [];
     try {
+        const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/agents/`,
+            `${apiUrl}/agents/`,
             {
                 headers: {
                     'x-user-id': userId,

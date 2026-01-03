@@ -80,8 +80,9 @@ export default async function CallDetailsPage({
     let transcripts: Transcript[] = [];
 
     try {
+        const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
         const sessionResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/${id}`,
+            `${apiUrl}/sessions/${id}`,
             { cache: 'no-store' }
         );
         if (sessionResponse.ok) {
@@ -89,7 +90,7 @@ export default async function CallDetailsPage({
         }
 
         const transcriptsResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/${id}/transcripts`,
+            `${apiUrl}/sessions/${id}/transcripts`,
             { cache: 'no-store' }
         );
         if (transcriptsResponse.ok) {
