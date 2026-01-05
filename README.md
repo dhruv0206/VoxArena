@@ -1,6 +1,6 @@
 # 🎤 VoxArena
 
-An open-source voice AI platform for building, testing, and deploying voice agents. Think of it as an open-source alternative to VAPI.
+An open-source voice AI platform for building, testing, and deploying voice agents.
 
 ## ✨ Features
 
