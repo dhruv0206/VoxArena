@@ -1,7 +1,7 @@
 """
 Custom Resemble AI TTS plugin for LiveKit Agents.
 
-Uses the streaming synthesis API for low-latency voice:
+Uses the streaming synthesis API with no_audio_header for raw PCM output:
 https://docs.resemble.ai/voice-generation/text-to-speech/streaming-http
 """
 
@@ -11,52 +11,8 @@ from typing import Any
 import httpx
 from livekit.agents import tts, APIConnectOptions
 import uuid
-import struct
 
 logger = logging.getLogger("resemble-tts")
-
-
-def _skip_wav_header(data: bytes) -> tuple[bytes, int, int]:
-    """
-    Parse WAV header and return (audio_data, sample_rate, num_channels).
-    WAV files have a variable-length header, so we need to find the 'data' chunk.
-    """
-    if len(data) < 44:
-        # Not enough data for a full WAV header
-        return data, 0, 0
-    
-    # Check for RIFF header
-    if data[:4] != b'RIFF' or data[8:12] != b'WAVE':
-        # Not a WAV file, return as-is (might be raw PCM)
-        return data, 0, 0
-    
-    pos = 12
-    sample_rate = 0
-    num_channels = 0
-    
-    while pos < len(data) - 8:
-        chunk_id = data[pos:pos+4]
-        chunk_size = struct.unpack('<I', data[pos+4:pos+8])[0]
-        
-        if chunk_id == b'fmt ':
-            if pos + 8 + chunk_size <= len(data):
-                # Parse fmt chunk
-                fmt_data = data[pos+8:pos+8+chunk_size]
-                if len(fmt_data) >= 8:
-                    num_channels = struct.unpack('<H', fmt_data[2:4])[0]
-                    sample_rate = struct.unpack('<I', fmt_data[4:8])[0]
-        elif chunk_id == b'data':
-            # Return audio data starting after this chunk header
-            audio_start = pos + 8
-            return data[audio_start:], sample_rate, num_channels
-        
-        pos += 8 + chunk_size
-        # Align to 2-byte boundary
-        if chunk_size % 2 != 0:
-            pos += 1
-    
-    # Couldn't find data chunk, return original
-    return data, sample_rate, num_channels
 
 
 class ResembleTTS(tts.TTS):
@@ -64,6 +20,7 @@ class ResembleTTS(tts.TTS):
     Text-to-Speech using Resemble AI API.
     
     This implementation supports synthesis (text -> audio stream).
+    Uses no_audio_header=true for raw PCM output, eliminating WAV header parsing.
     
     Requires:
     - RESEMBLE_API_KEY
@@ -149,23 +106,30 @@ class ResembleChunkedStream(tts.ChunkedStream):
         self._sample_rate = sample_rate
     
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
-        """Stream audio from Resemble AI."""
+        """Stream audio from Resemble AI with no_audio_header for raw PCM."""
         request_id = str(uuid.uuid4())
         http_client = self._resemble_tts._ensure_client()
         
         try:
-            # Build payload according to Resemble API docs
-            # https://docs.resemble.ai/voice-generation/text-to-speech/streaming-http
             payload = {
                 "voice_uuid": self._voice_uuid,
                 "data": self._input_text,
                 "sample_rate": self._sample_rate,
                 "precision": "PCM_16",
+                "no_audio_header": True,  # Raw PCM - no WAV header parsing needed!
             }
             if self._project_uuid:
                 payload["project_uuid"] = self._project_uuid
 
             logger.debug(f"Sending TTS request for text: {self._input_text[:50]}...")
+
+            # Initialize the emitter before streaming
+            output_emitter.initialize(
+                request_id=request_id,
+                sample_rate=self._sample_rate,
+                num_channels=1,
+                mime_type="audio/pcm",
+            )
 
             # Use the HTTP streaming synthesis endpoint
             async with http_client.stream(
@@ -183,52 +147,22 @@ class ResembleChunkedStream(tts.ChunkedStream):
                     logger.error(f"Resemble AI HTTP error: {response.status_code} - {error_msg}")
                     raise RuntimeError(f"Resemble AI error {response.status_code}: {error_msg}")
                 
-                # Collect all data first to handle WAV header
-                all_data = b""
-                async for chunk in response.aiter_bytes():
-                    all_data += chunk
-                
-                if not all_data:
-                    logger.warning("Empty response from Resemble AI")
-                    return
-                
-                # Parse WAV and extract audio data
-                audio_data, detected_sample_rate, num_channels = _skip_wav_header(all_data)
-                
-                # Use detected sample rate if available, otherwise use configured
-                actual_sample_rate = detected_sample_rate if detected_sample_rate > 0 else self._sample_rate
-                actual_channels = num_channels if num_channels > 0 else 1
-                
-                logger.debug(f"Received {len(audio_data)} bytes of audio data, sample_rate={actual_sample_rate}")
-                
-                # Initialize the emitter with audio format
-                # mime_type for 16-bit PCM audio
-                output_emitter.initialize(
-                    request_id=request_id,
-                    sample_rate=actual_sample_rate,
-                    num_channels=actual_channels,
-                    mime_type="audio/pcm",
-                )
-                
-                # Push audio data in chunks
-                chunk_size = 4096
-                offset = 0
-                
-                while offset < len(audio_data):
-                    audio_chunk = audio_data[offset:offset + chunk_size]
-                    offset += chunk_size
+                # Stream chunks directly - no buffering needed with no_audio_header!
+                async for chunk in response.aiter_bytes(chunk_size=4096):
+                    if not chunk:
+                        continue
                     
                     # Ensure even number of bytes for 16-bit PCM
-                    if len(audio_chunk) % 2 != 0:
-                        audio_chunk = audio_chunk[:-1]
+                    if len(chunk) % 2 != 0:
+                        chunk = chunk[:-1]
                     
-                    if len(audio_chunk) > 0:
-                        output_emitter.push(audio_chunk)
+                    if len(chunk) > 0:
+                        output_emitter.push(chunk)
                 
                 # Signal end of audio
                 output_emitter.flush()
                 
-                logger.debug(f"Finished sending audio for request {request_id}")
+                logger.debug(f"Finished streaming audio for request {request_id}")
                     
         except httpx.HTTPStatusError as e:
             logger.error(f"Resemble AI HTTP status error: {e}")
