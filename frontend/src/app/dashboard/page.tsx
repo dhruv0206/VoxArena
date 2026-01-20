@@ -101,7 +101,7 @@ function PlayIcon({ className }: { className?: string }) {
 const navItems = {
     build: [
         { icon: BotIcon, label: "Agents", href: "/dashboard/agents" },
-        { icon: MicrophoneIcon, label: "Voice", href: "/voice" },
+        // { icon: MicrophoneIcon, label: "Voice", href: "/voice" },
         { icon: PlayIcon, label: "Preview", href: "/preview" },
         { icon: KeyIcon, label: "API Keys", href: "/dashboard/keys" },
     ],
@@ -395,7 +395,7 @@ export default async function DashboardPage() {
 
                     {/* Quick Actions */}
                     <div className="flex gap-4">
-                        <Link href="/voice">
+                        <Link href="/preview">
                             <Button size="lg" className="gap-2">
                                 <MicrophoneIcon className="h-5 w-5" />
                                 Start Voice Session

@@ -89,7 +89,7 @@ function PlayIcon({ className }: { className?: string }) {
 const navItems = {
     build: [
         { icon: BotIcon, label: "Agents", href: "/dashboard/agents" },
-        { icon: MicrophoneIcon, label: "Voice", href: "/voice" },
+        // { icon: MicrophoneIcon, label: "Voice", href: "/voice" },
         { icon: PlayIcon, label: "Preview", href: "/preview" },
         { icon: KeyIcon, label: "API Keys", href: "/dashboard/keys" },
     ],

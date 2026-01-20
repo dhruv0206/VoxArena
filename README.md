@@ -32,67 +32,55 @@ VoxArena/
 | **Auth** | Clerk |
 | **Real-time** | LiveKit |
 
-## 🚀 Quick Start
+### Quick Start (Self-Hosted)
+
+The easiest way to run VoxArena is using Docker Compose.
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL
-- API keys for: LiveKit, Deepgram, Google AI, Resemble AI, Clerk
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+- API keys for: LiveKit, Deepgram, Google Gemini, Resemble AI, Clerk.
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/VoxArena.git
+git clone https://github.com/dhruv0206/VoxArena.git
 cd VoxArena
 ```
 
-### 2. Set up the Backend
+### 2. Configure Environment Variables
+
+Create `.env` files for each service by copying the examples:
 
 ```bash
-cd backend
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+# Backend
+cp backend/.env.example backend/.env
 
-pip install -e .
-cp .env.example .env
-# Edit .env with your credentials
+# Frontend
+cp frontend/.env.example frontend/.env
 
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
+# Agent
+cp agent/.env.example agent/.env
 ```
 
-### 3. Set up the Frontend
+**Important:** Edit each `.env` file and add your API keys.
+
+### 3. Run with Docker Compose
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env.local
-# Edit .env.local with your credentials
-
-npm run dev
+docker-compose up -d --build
 ```
 
-### 4. Set up the Agent
+This will start all services:
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8000](http://localhost:8000)
+- **Voice Agent**: Connected to LiveKit
+- **PostgreSQL**: Database
 
-```bash
-cd agent
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+### 4. Open the Dashboard
 
-pip install -e .
-cp .env.example .env
-# Edit .env with your credentials
+Visit [http://localhost:3000](http://localhost:3000) and sign in.
 
-python agent.py dev
-```
-
-### 5. Open the app
-
-Visit [http://localhost:3000](http://localhost:3000) and sign in to start using VoxArena!
 
 ## 📁 Project Structure
 
