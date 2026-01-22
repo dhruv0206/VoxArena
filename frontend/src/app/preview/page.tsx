@@ -71,7 +71,8 @@ function SparklesIcon({ className }: { className?: string }) {
 
 // Models configuration
 const sttModels = [
-    { id: "deepgram-nova-2", name: "Deepgram Nova-2", provider: "Deepgram" },
+    { id: "deepgram", name: "Deepgram Nova-2", provider: "Deepgram" },
+    { id: "assemblyai", name: "AssemblyAI", provider: "AssemblyAI" },
 ];
 
 const llmModels = [
@@ -87,6 +88,9 @@ interface Agent {
     id: string;
     name: string;
     type: string;
+    config?: {
+        stt_provider?: string;
+    };
 }
 
 // Default agent
@@ -491,6 +495,17 @@ export default function PreviewPage() {
     const [selectedAgent, setSelectedAgent] = useState<string>("default");
     const [agents, setAgents] = useState<Agent[]>([defaultAgent]);
     const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+    const [selectedStt, setSelectedStt] = useState<string>("deepgram");
+
+    // Update STT when agent changes
+    useEffect(() => {
+        const agent = agents.find(a => a.id === selectedAgent);
+        if (agent?.config?.stt_provider) {
+            setSelectedStt(agent.config.stt_provider);
+        } else {
+            setSelectedStt("deepgram");
+        }
+    }, [selectedAgent, agents]);
 
     // Fetch user's agents from API
     useEffect(() => {
@@ -623,7 +638,7 @@ export default function PreviewPage() {
                         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Speech-to-Text
                         </Label>
-                        <Select defaultValue="deepgram-nova-2" disabled>
+                        <Select value={selectedStt} disabled>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -635,6 +650,9 @@ export default function PreviewPage() {
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                            Configured in agent settings
+                        </p>
                     </div>
 
                     <div className="space-y-3">
@@ -677,7 +695,9 @@ export default function PreviewPage() {
                         <div className="rounded-lg border bg-muted/50 p-3">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Current Pipeline</p>
                             <div className="flex items-center gap-1 text-xs">
-                                <Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-400">Deepgram</Badge>
+                                <Badge variant="outline" className={`text-[10px] ${selectedStt === 'assemblyai' ? 'border-blue-500/50 text-blue-400' : 'border-orange-500/50 text-orange-400'}`}>
+                                    {selectedStt === 'assemblyai' ? 'AssemblyAI' : 'Deepgram'}
+                                </Badge>
                                 <span className="text-white/30">→</span>
                                 <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-400">Gemini</Badge>
                                 <span className="text-white/30">→</span>

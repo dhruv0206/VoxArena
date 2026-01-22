@@ -72,6 +72,7 @@ interface Agent {
         first_message_mode?: string;
         llm_provider?: string;
         llm_model?: string;
+        stt_provider?: string;
         template?: string;
         webhooks?: WebhookConfigState;
     };
@@ -91,6 +92,11 @@ const LLM_MODELS = [
 const FIRST_MESSAGE_MODES = [
     { id: "assistant_speaks_first", name: "Assistant speaks first" },
     { id: "assistant_waits", name: "Assistant waits for user" },
+];
+
+const STT_PROVIDERS = [
+    { id: "deepgram", name: "Deepgram Nova 2" },
+    { id: "assemblyai", name: "AssemblyAI" },
 ];
 
 const DEFAULT_WEBHOOK_CONFIG: WebhookConfigState = {
@@ -123,6 +129,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [firstMessageMode, setFirstMessageMode] = useState(agent.config?.first_message_mode || "assistant_speaks_first");
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");
+    const [sttProvider, setSttProvider] = useState(agent.config?.stt_provider || "deepgram");
 
     // Webhook state
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
@@ -149,6 +156,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             first_message_mode: firstMessageMode,
                             llm_provider: "gemini",
                             llm_model: llmModel,
+                            stt_provider: sttProvider,
                             webhooks: webhookConfig,
                         },
                     }),
@@ -166,7 +174,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
         } finally {
             setIsSaving(false);
         }
-    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, webhookConfig]);
+    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, sttProvider, webhookConfig]);
 
     const handleTestCall = () => {
         // Navigate to preview page (could pass agent ID in future)
@@ -379,17 +387,21 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>STT Provider</Label>
-                                    <Select defaultValue="deepgram" disabled>
+                                    <Select value={sttProvider} onValueChange={setSttProvider}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="deepgram">Deepgram Nova 2</SelectItem>
+                                            {STT_PROVIDERS.map((provider) => (
+                                                <SelectItem key={provider.id} value={provider.id}>
+                                                    {provider.name}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Transcription settings are configured in the agent backend. Additional customization coming soon.
+                                    Select the speech-to-text provider for transcription. Make sure you have the API key configured in your agent environment.
                                 </p>
                             </div>
                         </CardContent>

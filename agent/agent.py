@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession
 
-from livekit.plugins import deepgram, google, silero
+from livekit.plugins import assemblyai, deepgram, google, silero
 
 from resemble_tts import ResembleTTS
 
@@ -82,6 +82,7 @@ async def entrypoint(ctx: agents.JobContext):
     voice_id = None
     system_prompt = DEFAULT_INSTRUCTIONS
     first_message = "Hello! How can I help you today?"
+    first_message_mode = "assistant_speaks_first"  # or "assistant_waits"
     
     # Parse room metadata to get agent ID
     if room_metadata:
@@ -101,82 +102,105 @@ async def entrypoint(ctx: agents.JobContext):
             system_prompt = config.get("system_prompt") or DEFAULT_INSTRUCTIONS
             first_message = config.get("first_message") or first_message
             voice_id = config.get("voice_id")
+            first_message_mode = config.get("first_message_mode", "assistant_speaks_first")
             
-            # --- WEBHOOKS SUPPORT ---
-            webhooks = config.get("webhooks", {})
-            
-            # Pre-call Webhook
-            pre_call = webhooks.get("pre_call", {})
-            if pre_call.get("enabled"):
-                logger.info("Executing pre-call webhook...")
-                try:
-                    payload = {
-                        "agent_id": agent_id,
-                        "room_name": ctx.room.name,
-                        "user_id": metadata.get("userId"), # From room metadata
-                        "event": "pre_call"
-                    }
+    # Get STT provider from config (default to deepgram)
+    stt_provider = "deepgram"
+    if agent_config:
+        stt_provider = agent_config.get("config", {}).get("stt_provider", "deepgram")
+    
+    # Create STT based on provider selection
+    if stt_provider == "assemblyai":
+        stt = assemblyai.STT()
+        logger.info("Using AssemblyAI for STT")
+    else:
+        stt = deepgram.STT()
+        logger.info("Using Deepgram for STT")
+    
+    # Continue with agent config parsing for webhooks
+    if agent_config:
+        config = agent_config.get("config", {})
+        
+        # --- WEBHOOKS SUPPORT ---
+        webhooks = config.get("webhooks", {})
+        
+        # Pre-call Webhook
+        pre_call = webhooks.get("pre_call", {})
+        if pre_call.get("enabled"):
+            logger.info("Executing pre-call webhook...")
+            try:
+                payload = {
+                    "agent_id": agent_id,
+                    "room_name": ctx.room.name,
+                    "user_id": metadata.get("userId"), # From room metadata
+                    "event": "pre_call"
+                }
+                
+                response_data = await execute_webhook(
+                    url=pre_call.get("url"),
+                    method=pre_call.get("method", "GET"),
+                    headers=pre_call.get("headers", []),
+                    body=payload if pre_call.get("method") == "POST" else None,
+                    timeout=pre_call.get("timeout", 5)
+                )
+                
+                # Handle Assignments
+                if response_data and pre_call.get("assignments"):
+                    variables = {}
+                    for assignment in pre_call.get("assignments", []):
+                        # Simple path traversal (e.g. key.subkey)
+                        value = response_data
+                        for key in assignment["path"].split("."):
+                            if isinstance(value, dict):
+                                value = value.get(key)
+                            else:
+                                value = None
+                                break
+                        if value is not None:
+                            variables[assignment["variable"]] = str(value)
                     
-                    response_data = await execute_webhook(
-                        url=pre_call.get("url"),
-                        method=pre_call.get("method", "GET"),
-                        headers=pre_call.get("headers", []),
-                        body=payload if pre_call.get("method") == "POST" else None,
-                        timeout=pre_call.get("timeout", 5)
-                    )
+                    logger.info(f"Webhook assignments: {variables}")
                     
-                    # Handle Assignments
-                    if response_data and pre_call.get("assignments"):
-                        variables = {}
-                        for assignment in pre_call.get("assignments", []):
-                            # Simple path traversal (e.g. key.subkey)
-                            value = response_data
-                            for key in assignment["path"].split("."):
-                                if isinstance(value, dict):
-                                    value = value.get(key)
-                                else:
-                                    value = None
-                                    break
-                            if value is not None:
-                                variables[assignment["variable"]] = str(value)
-                        
-                        logger.info(f"Webhook assignments: {variables}")
-                        
-                        # Apply variables to prompts
-                        if variables:
-                            try:
-                                # Use safe substitution that ignores missing keys
-                                for key, val in variables.items():
-                                    placeholder = "{{" + key + "}}"
-                                    system_prompt = system_prompt.replace(placeholder, val)
-                                    first_message = first_message.replace(placeholder, val)
-                            except Exception as e:
-                                logger.error(f"Error applying webhook variables: {e}")
+                    # Apply variables to prompts
+                    if variables:
+                        try:
+                            # Use safe substitution that ignores missing keys
+                            for key, val in variables.items():
+                                placeholder = "{{" + key + "}}"
+                                system_prompt = system_prompt.replace(placeholder, val)
+                                first_message = first_message.replace(placeholder, val)
+                        except Exception as e:
+                            logger.error(f"Error applying webhook variables: {e}")
 
-                except Exception as e:
-                    logger.error(f"Pre-call webhook failed: {e}")
+            except Exception as e:
+                logger.error(f"Pre-call webhook failed: {e}")
 
     # Create TTS with the configured voice
     tts = ResembleTTS(voice_uuid=voice_id) if voice_id else ResembleTTS()
     
     # Create the agent session with STT, LLM, and TTS
     session = AgentSession(
-        stt=deepgram.STT(),
+        stt=stt,
         llm=google.LLM(),
         tts=tts,
         vad=silero.VAD.load(),
     )
     
     # Start the session with the configured system prompt
+    logger.info(f"Starting session with system_prompt ({len(system_prompt)} chars), first_message_mode={first_message_mode}")
     await session.start(
         room=ctx.room,
         agent=VoiceAssistant(instructions=system_prompt),
     )
     
-    # Generate initial greeting
-    await session.generate_reply(
-        instructions=f"Say this exact greeting: {first_message}"
-    )
+    # Generate initial greeting only if mode is assistant_speaks_first
+    if first_message_mode == "assistant_speaks_first":
+        logger.info(f"Generating initial greeting: {first_message}")
+        await session.generate_reply(
+            instructions=f"Say this exact greeting: {first_message}"
+        )
+    else:
+        logger.info("Assistant waiting for user to speak first")
 
     # Wait for the session to run until shutdown (disconnection)
     try:
