@@ -1,7 +1,7 @@
 # VoxArena Voice Agent
 
 A LiveKit-based voice agent using:
-- **Deepgram** for Speech-to-Text
+- **AssemblyAI** (default) or **Deepgram** for Speech-to-Text
 - **Google Gemini** for LLM
 - **Google TTS** for Text-to-Speech
 
@@ -41,6 +41,7 @@ Edit `.env` and add your API keys:
 | `LIVEKIT_URL` | LiveKit WebSocket URL | [cloud.livekit.io](https://cloud.livekit.io) |
 | `DEEPGRAM_API_KEY` | Deepgram API Key | [console.deepgram.com](https://console.deepgram.com) |
 | `GOOGLE_API_KEY` | Google/Gemini API Key | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| `ASSEMBLYAI_API_KEY` | AssemblyAI API Key | [assemblyai.com](https://www.assemblyai.com) |
 
 ### 4. Run the agent
 
@@ -58,7 +59,7 @@ python agent.py start
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   User      │────▶│   Deepgram   │────▶│   Gemini    │
+│   User      │────▶│  AssemblyAI  │────▶│   Gemini    │
 │  (Speech)   │     │    (STT)     │     │   (LLM)     │
 └─────────────┘     └──────────────┘     └──────┬──────┘
                                                 │
@@ -68,7 +69,7 @@ python agent.py start
 └─────────────┘     └──────────────┘
 ```
 
-1. User speaks → Deepgram transcribes to text
+1. User speaks → AssemblyAI transcribes to text
 2. Text → Gemini generates response
 3. Response → Google TTS converts to speech
 4. User hears the agent's response
@@ -93,13 +94,22 @@ tts = google.TTS(
 )
 ```
 
-### Change STT Language
+### Change STT Provider
+
+The agent uses AssemblyAI by default. You can configure this in your agent settings or environment variables.
+
+To switch to Deepgram:
 
 ```python
-stt = deepgram.STT(
-    model="nova-2",
-    language="es",  # Spanish
-)
+# In agent.py
+stt = deepgram.STT()
+```
+
+Or for AssemblyAI (default):
+
+```python
+# In agent.py
+stt = assemblyai.STT()
 ```
 
 ## Deployment

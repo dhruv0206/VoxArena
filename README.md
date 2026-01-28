@@ -24,7 +24,7 @@ VoxArena/
 | Component | Technology |
 |-----------|------------|
 | **Agent** | Python, LiveKit Agents SDK |
-| **STT** | Deepgram |
+| **STT** | AssemblyAI (default), Deepgram |
 | **LLM** | Google Gemini |
 | **TTS** | Resemble AI |
 | **Backend** | FastAPI, SQLAlchemy, PostgreSQL |

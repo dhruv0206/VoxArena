@@ -495,7 +495,7 @@ export default function PreviewPage() {
     const [selectedAgent, setSelectedAgent] = useState<string>("default");
     const [agents, setAgents] = useState<Agent[]>([defaultAgent]);
     const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-    const [selectedStt, setSelectedStt] = useState<string>("deepgram");
+    const [selectedStt, setSelectedStt] = useState<string>("assemblyai");
 
     // Update STT when agent changes
     useEffect(() => {
@@ -503,7 +503,7 @@ export default function PreviewPage() {
         if (agent?.config?.stt_provider) {
             setSelectedStt(agent.config.stt_provider);
         } else {
-            setSelectedStt("deepgram");
+            setSelectedStt("assemblyai");
         }
     }, [selectedAgent, agents]);
 

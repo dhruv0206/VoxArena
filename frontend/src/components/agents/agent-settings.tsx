@@ -129,7 +129,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [firstMessageMode, setFirstMessageMode] = useState(agent.config?.first_message_mode || "assistant_speaks_first");
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");
-    const [sttProvider, setSttProvider] = useState(agent.config?.stt_provider || "deepgram");
+    const [sttProvider, setSttProvider] = useState(agent.config?.stt_provider || "assemblyai");
 
     // Webhook state
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(

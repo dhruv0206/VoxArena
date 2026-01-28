@@ -104,10 +104,10 @@ async def entrypoint(ctx: agents.JobContext):
             voice_id = config.get("voice_id")
             first_message_mode = config.get("first_message_mode", "assistant_speaks_first")
             
-    # Get STT provider from config (default to deepgram)
-    stt_provider = "deepgram"
+    # Get STT provider from config (default to assemblyai)
+    stt_provider = "assemblyai"
     if agent_config:
-        stt_provider = agent_config.get("config", {}).get("stt_provider", "deepgram")
+        stt_provider = agent_config.get("config", {}).get("stt_provider", "assemblyai")
     
     # Create STT based on provider selection
     if stt_provider == "assemblyai":
