@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -110,22 +110,13 @@ const STT_PROVIDERS = [
     { id: "assemblyai", name: "AssemblyAI" },
 ];
 
-// Resemble AI voices available on this API key (fetched 2026-02-24)
-// 5 Female + 5 Male — en-US voices first, multilingual for balance
-const RESEMBLE_VOICES = [
-    // ── Female ────────────────────────────────────────────────────────
-    { id: "fb2d2858", name: "Lucy", gender: "Female", language: "English (US)" },
-    { id: "91b49260", name: "Abigail", gender: "Female", language: "English (US)" },
-    { id: "cfb9967c", name: "Fiona", gender: "Female", language: "English (US)" },
-    { id: "08975946", name: "Meera", gender: "Female", language: "English (US)" },
-    { id: "8561c50d", name: "Francesca", gender: "Female", language: "Italian" },
-    // ── Male ──────────────────────────────────────────────────────────
-    { id: "7c4296be", name: "Grant", gender: "Male", language: "English (US)" },
-    { id: "6e870cef", name: "Mateo", gender: "Male", language: "Spanish" },
-    { id: "928de4d4", name: "Alessandro", gender: "Male", language: "Italian" },
-    { id: "01aa67f7", name: "Diego", gender: "Male", language: "Portuguese" },
-    { id: "1d68986c", name: "Noah", gender: "Male", language: "Swedish" },
-];
+interface ResembleVoice {
+    id: string;
+    name: string;
+    language: string;
+    source?: string;
+    voice_type?: string;
+}
 
 const DEFAULT_WEBHOOK_CONFIG: WebhookConfigState = {
     pre_call: {
@@ -158,7 +149,36 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");
     const [sttProvider, setSttProvider] = useState(agent.config?.stt_provider || "assemblyai");
-    const [voiceId, setVoiceId] = useState(agent.config?.voice_id || "fb2d2858");
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+    const [voiceId, setVoiceId] = useState(agent.config?.voice_id || "");
+    const [resembleVoices, setResembleVoices] = useState<ResembleVoice[]>([]);
+    const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+    const [voicePage, setVoicePage] = useState(0);
+    const VOICES_PER_PAGE = 10;
+
+    useEffect(() => {
+        const fetchVoices = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/resemble/voices`);
+                if (!res.ok) throw new Error("Failed to fetch voices");
+                const data: ResembleVoice[] = await res.json();
+                setResembleVoices(data);
+                // If no voice saved yet, pre-select the first one
+                if (!agent.config?.voice_id && data.length > 0) {
+                    setVoiceId(data[0].id);
+                }
+                setVoicePage(0);
+            } catch (e) {
+                console.error("Could not load Resemble voices:", e);
+            } finally {
+                setIsLoadingVoices(false);
+            }
+        };
+        fetchVoices();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [apiUrl]);
 
     // Webhook state
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
@@ -174,8 +194,6 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [isBuying, setIsBuying] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
     const [isReleasing, setIsReleasing] = useState(false);
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
     const handleSearchNumbers = useCallback(async () => {
         setIsSearching(true);
@@ -494,51 +512,66 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                                 {/* Voice Selector */}
                                 <div className="space-y-2">
                                     <Label>Voice</Label>
-                                    <Select value={voiceId} onValueChange={setVoiceId}>
+                                    <Select value={voiceId} onValueChange={setVoiceId} disabled={isLoadingVoices}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select a voice" />
+                                            <SelectValue placeholder={isLoadingVoices ? "Loading voices..." : "Select a voice"} />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            {RESEMBLE_VOICES.map((voice) => (
+                                        <SelectContent className="max-h-60 overflow-y-auto">
+                                            {resembleVoices.map((voice) => (
                                                 <SelectItem key={voice.id} value={voice.id}>
                                                     <span className="font-medium">{voice.name}</span>
                                                     <span className="ml-2 text-muted-foreground text-xs">
-                                                        {voice.gender} · {voice.language}
+                                                        {voice.language}
                                                     </span>
                                                 </SelectItem>
                                             ))}
+                                            {!isLoadingVoices && resembleVoices.length === 0 && (
+                                                <div className="px-2 py-3 text-sm text-muted-foreground">
+                                                    No voices found. Check your RESEMBLE_API_KEY.
+                                                </div>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                {/* Voice Preview Cards */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    {RESEMBLE_VOICES.map((voice) => (
-                                        <button
-                                            key={voice.id}
-                                            type="button"
-                                            onClick={() => setVoiceId(voice.id)}
-                                            className={`text-left p-3 rounded-lg border transition-colors ${voiceId === voice.id
-                                                ? "border-primary bg-primary/10"
-                                                : "border-border hover:bg-muted/50"
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">
-                                                    {voice.gender === "Female" ? "👩" : "👨"}
-                                                </span>
-                                                <div>
-                                                    <p className="font-medium text-sm">{voice.name}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {voice.language} · {voice.gender}
-                                                    </p>
-                                                </div>
-                                                {voiceId === voice.id && (
-                                                    <span className="ml-auto text-xs font-semibold text-primary">Active</span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
+                                {/* Voice Preview Cards — scrollable */}
+                                <div className="overflow-y-auto max-h-[360px] pr-1 rounded-lg border border-border">
+                                    {isLoadingVoices ? (
+                                        <p className="text-sm text-muted-foreground py-6 text-center">Loading voices...</p>
+                                    ) : resembleVoices.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground py-6 text-center">
+                                            No voices available. Check your <strong>RESEMBLE_API_KEY</strong>.
+                                        </p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2 p-2">
+                                            {resembleVoices.map((voice) => (
+                                                <button
+                                                    key={voice.id}
+                                                    type="button"
+                                                    onClick={() => setVoiceId(voice.id)}
+                                                    className={`text-left p-3 rounded-lg border transition-colors ${voiceId === voice.id
+                                                        ? "border-primary bg-primary/10"
+                                                        : "border-border hover:bg-muted/50"
+                                                        }`}
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-lg mt-0.5">🧁</span>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="font-medium text-sm truncate">
+                                                                {voice.name}
+                                                                {voiceId === voice.id && (
+                                                                    <span className="ml-1 text-xs font-semibold text-primary">✓</span>
+                                                                )}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground truncate">
+                                                                {voice.language}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <p className="text-xs text-muted-foreground">

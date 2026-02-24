@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     livekit_api_secret: str = ""
     livekit_url: str = ""
     
+    # Resemble AI
+    resemble_api_key: str = ""
+
     # Twilio
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

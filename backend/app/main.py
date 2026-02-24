@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.routers import agents, sessions, livekit, telephony
+from app.routers import agents, sessions, livekit, telephony, resemble
 
 settings = get_settings()
 
@@ -25,6 +25,7 @@ app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(livekit.router, prefix="/api/livekit", tags=["LiveKit"])
 app.include_router(telephony.router, prefix="/api/telephony", tags=["Telephony"])
+app.include_router(resemble.router, prefix="/api/resemble", tags=["Resemble"])
 
 
 @app.get("/health")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,21 +24,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-// Resemble AI voices — kept in sync with agent-settings.tsx (5F + 5M)
-const RESEMBLE_VOICES = [
-    // Female
-    { id: "fb2d2858", name: "Lucy", gender: "Female", language: "English (US)" },
-    { id: "91b49260", name: "Abigail", gender: "Female", language: "English (US)" },
-    { id: "cfb9967c", name: "Fiona", gender: "Female", language: "English (US)" },
-    { id: "08975946", name: "Meera", gender: "Female", language: "English (US)" },
-    { id: "8561c50d", name: "Francesca", gender: "Female", language: "Italian" },
-    // Male
-    { id: "7c4296be", name: "Grant", gender: "Male", language: "English (US)" },
-    { id: "6e870cef", name: "Mateo", gender: "Male", language: "Spanish" },
-    { id: "928de4d4", name: "Alessandro", gender: "Male", language: "Italian" },
-    { id: "01aa67f7", name: "Diego", gender: "Male", language: "Portuguese" },
-    { id: "1d68986c", name: "Noah", gender: "Male", language: "Swedish" },
-];
+interface ResembleVoice {
+    id: string;
+    name: string;
+    language: string;
+    source?: string;
+    voice_type?: string;
+}
 
 function PlusIcon({ className }: { className?: string }) {
     return (
@@ -134,7 +126,29 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<AgentTemplate | null>(null);
     const [agentName, setAgentName] = useState("New Assistant");
-    const [selectedVoice, setSelectedVoice] = useState(RESEMBLE_VOICES[0].id);
+    const [selectedVoice, setSelectedVoice] = useState("");
+    const [resembleVoices, setResembleVoices] = useState<ResembleVoice[]>([]);
+    const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+    useEffect(() => {
+        const fetchVoices = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/resemble/voices`);
+                if (!res.ok) throw new Error("Failed to fetch voices");
+                const data: ResembleVoice[] = await res.json();
+                setResembleVoices(data);
+                if (data.length > 0) setSelectedVoice(data[0].id);
+            } catch (e) {
+                console.error("Could not load voices:", e);
+                setResembleVoices([]);
+            } finally {
+                setIsLoadingVoices(false);
+            }
+        };
+        fetchVoices();
+    }, [apiUrl]);
 
     const handleSelectTemplate = (template: AgentTemplate) => {
         setSelectedTemplate(template);
@@ -165,7 +179,7 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
                             template: selectedTemplate.id,
                             voice_provider: "resemble",
                             voice_id: selectedVoice,
-                            voice_name: RESEMBLE_VOICES.find(v => v.id === selectedVoice)?.name,
+                            voice_name: resembleVoices.find(v => v.id === selectedVoice)?.name,
                         },
                         user_id: userId,
                     }),
@@ -181,7 +195,7 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
             setIsOpen(false);
             setSelectedTemplate(null);
             setAgentName("New Assistant");
-            setSelectedVoice(RESEMBLE_VOICES[0].id);
+            setSelectedVoice(resembleVoices[0]?.id ?? "");
 
             toast.success("Assistant created successfully!", {
                 description: `${newAgent.name} is now ready to configure.`,
@@ -259,20 +273,24 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
                             {/* Voice Selection */}
                             <div className="mb-4">
                                 <Label className="text-sm">Voice</Label>
-                                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                                <Select value={selectedVoice} onValueChange={setSelectedVoice} disabled={isLoadingVoices}>
                                     <SelectTrigger className="mt-1">
-                                        <SelectValue />
+                                        <SelectValue placeholder={isLoadingVoices ? "Loading voices..." : "Select a voice"} />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {RESEMBLE_VOICES.map((voice) => (
+                                    <SelectContent className="max-h-60 overflow-y-auto">
+                                        {resembleVoices.map((voice) => (
                                             <SelectItem key={voice.id} value={voice.id}>
                                                 <div className="flex items-center gap-2">
-                                                    <span>{voice.gender === "Female" ? "👩" : "👨"}</span>
                                                     <span className="font-medium">{voice.name}</span>
-                                                    <span className="text-xs text-muted-foreground">· {voice.gender} · {voice.language}</span>
+                                                    <span className="text-xs text-muted-foreground">· {voice.language}</span>
                                                 </div>
                                             </SelectItem>
                                         ))}
+                                        {!isLoadingVoices && resembleVoices.length === 0 && (
+                                            <div className="px-2 py-3 text-sm text-muted-foreground">
+                                                No voices found. Check your RESEMBLE_API_KEY.
+                                            </div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
