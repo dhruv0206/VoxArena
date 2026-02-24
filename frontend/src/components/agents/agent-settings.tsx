@@ -83,6 +83,7 @@ interface Agent {
         llm_provider?: string;
         llm_model?: string;
         stt_provider?: string;
+        voice_id?: string;
         template?: string;
         webhooks?: WebhookConfigState;
     };
@@ -107,6 +108,23 @@ const FIRST_MESSAGE_MODES = [
 const STT_PROVIDERS = [
     { id: "deepgram", name: "Deepgram Nova 2" },
     { id: "assemblyai", name: "AssemblyAI" },
+];
+
+// Resemble AI voices available on this API key (fetched 2026-02-24)
+// 5 Female + 5 Male — en-US voices first, multilingual for balance
+const RESEMBLE_VOICES = [
+    // ── Female ────────────────────────────────────────────────────────
+    { id: "fb2d2858", name: "Lucy", gender: "Female", language: "English (US)" },
+    { id: "91b49260", name: "Abigail", gender: "Female", language: "English (US)" },
+    { id: "cfb9967c", name: "Fiona", gender: "Female", language: "English (US)" },
+    { id: "08975946", name: "Meera", gender: "Female", language: "English (US)" },
+    { id: "8561c50d", name: "Francesca", gender: "Female", language: "Italian" },
+    // ── Male ──────────────────────────────────────────────────────────
+    { id: "7c4296be", name: "Grant", gender: "Male", language: "English (US)" },
+    { id: "6e870cef", name: "Mateo", gender: "Male", language: "Spanish" },
+    { id: "928de4d4", name: "Alessandro", gender: "Male", language: "Italian" },
+    { id: "01aa67f7", name: "Diego", gender: "Male", language: "Portuguese" },
+    { id: "1d68986c", name: "Noah", gender: "Male", language: "Swedish" },
 ];
 
 const DEFAULT_WEBHOOK_CONFIG: WebhookConfigState = {
@@ -140,6 +158,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [firstMessage, setFirstMessage] = useState(agent.config?.first_message || "");
     const [systemPrompt, setSystemPrompt] = useState(agent.config?.system_prompt || "");
     const [sttProvider, setSttProvider] = useState(agent.config?.stt_provider || "assemblyai");
+    const [voiceId, setVoiceId] = useState(agent.config?.voice_id || "fb2d2858");
 
     // Webhook state
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
@@ -257,6 +276,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             llm_provider: "gemini",
                             llm_model: llmModel,
                             stt_provider: sttProvider,
+                            voice_id: voiceId,
                             webhooks: webhookConfig,
                         },
                     }),
@@ -274,7 +294,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
         } finally {
             setIsSaving(false);
         }
-    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, sttProvider, webhookConfig]);
+    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, sttProvider, voiceId, webhookConfig]);
 
     const handleTestCall = () => {
         // Navigate to preview page (could pass agent ID in future)
@@ -454,10 +474,11 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                     <Card>
                         <CardHeader>
                             <CardTitle>Voice</CardTitle>
-                            <CardDescription>Configure the text-to-speech settings.</CardDescription>
+                            <CardDescription>Choose a Resemble AI voice for your agent.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                                {/* TTS Provider (locked) */}
                                 <div className="space-y-2">
                                     <Label>TTS Provider</Label>
                                     <Select defaultValue="resemble" disabled>
@@ -469,8 +490,60 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                    Voice settings are configured in the agent backend. Additional voice customization coming soon.
+
+                                {/* Voice Selector */}
+                                <div className="space-y-2">
+                                    <Label>Voice</Label>
+                                    <Select value={voiceId} onValueChange={setVoiceId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a voice" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {RESEMBLE_VOICES.map((voice) => (
+                                                <SelectItem key={voice.id} value={voice.id}>
+                                                    <span className="font-medium">{voice.name}</span>
+                                                    <span className="ml-2 text-muted-foreground text-xs">
+                                                        {voice.gender} · {voice.language}
+                                                    </span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Voice Preview Cards */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {RESEMBLE_VOICES.map((voice) => (
+                                        <button
+                                            key={voice.id}
+                                            type="button"
+                                            onClick={() => setVoiceId(voice.id)}
+                                            className={`text-left p-3 rounded-lg border transition-colors ${voiceId === voice.id
+                                                ? "border-primary bg-primary/10"
+                                                : "border-border hover:bg-muted/50"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg">
+                                                    {voice.gender === "Female" ? "👩" : "👨"}
+                                                </span>
+                                                <div>
+                                                    <p className="font-medium text-sm">{voice.name}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {voice.language} · {voice.gender}
+                                                    </p>
+                                                </div>
+                                                {voiceId === voice.id && (
+                                                    <span className="ml-auto text-xs font-semibold text-primary">Active</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <p className="text-xs text-muted-foreground">
+                                    Powered by <strong>Resemble AI</strong>. Multilingual voices can also speak English.
+                                    Save changes to apply the new voice.
                                 </p>
                             </div>
                         </CardContent>

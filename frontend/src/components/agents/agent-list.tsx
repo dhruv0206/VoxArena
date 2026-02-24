@@ -24,11 +24,20 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-// Prebuilt Resemble AI voices
+// Resemble AI voices — kept in sync with agent-settings.tsx (5F + 5M)
 const RESEMBLE_VOICES = [
-    { id: "d70f93d1", name: "Juniper", gender: "Female", description: "description" },
-    { id: "38a0b764", name: "Aaron", gender: "Male", description: "description" },
-    { id: "7213a9ea", name: "Grace", gender: "Female", description: "description" },
+    // Female
+    { id: "fb2d2858", name: "Lucy", gender: "Female", language: "English (US)" },
+    { id: "91b49260", name: "Abigail", gender: "Female", language: "English (US)" },
+    { id: "cfb9967c", name: "Fiona", gender: "Female", language: "English (US)" },
+    { id: "08975946", name: "Meera", gender: "Female", language: "English (US)" },
+    { id: "8561c50d", name: "Francesca", gender: "Female", language: "Italian" },
+    // Male
+    { id: "7c4296be", name: "Grant", gender: "Male", language: "English (US)" },
+    { id: "6e870cef", name: "Mateo", gender: "Male", language: "Spanish" },
+    { id: "928de4d4", name: "Alessandro", gender: "Male", language: "Italian" },
+    { id: "01aa67f7", name: "Diego", gender: "Male", language: "Portuguese" },
+    { id: "1d68986c", name: "Noah", gender: "Male", language: "Swedish" },
 ];
 
 function PlusIcon({ className }: { className?: string }) {
@@ -258,9 +267,9 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
                                         {RESEMBLE_VOICES.map((voice) => (
                                             <SelectItem key={voice.id} value={voice.id}>
                                                 <div className="flex items-center gap-2">
-                                                    <span>{voice.name}</span>
-                                                    <span className="text-xs text-muted-foreground">({voice.gender})</span>
-                                                    <span className="text-xs text-muted-foreground">- {voice.description}</span>
+                                                    <span>{voice.gender === "Female" ? "👩" : "👨"}</span>
+                                                    <span className="font-medium">{voice.name}</span>
+                                                    <span className="text-xs text-muted-foreground">· {voice.gender} · {voice.language}</span>
                                                 </div>
                                             </SelectItem>
                                         ))}

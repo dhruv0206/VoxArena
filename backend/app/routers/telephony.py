@@ -168,15 +168,15 @@ async def release_number(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    if not agent.twilio_sid:
+    if not agent.phone_number:
         raise HTTPException(status_code=400, detail="Agent has no assigned phone number")
 
     try:
-        from twilio.rest import Client
-        client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
-
-        # Release the number from Twilio
-        client.incoming_phone_numbers(agent.twilio_sid).delete()
+        # Only call Twilio API if we have a SID (numbers assigned manually may not have one)
+        if agent.twilio_sid:
+            from twilio.rest import Client
+            client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+            client.incoming_phone_numbers(agent.twilio_sid).delete()
 
         old_number = agent.phone_number
         agent.phone_number = None

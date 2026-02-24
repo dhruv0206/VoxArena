@@ -128,10 +128,26 @@ async def create_session(
     session_data: VoiceSessionCreate,
     db: Session = Depends(get_db),
 ):
-    """Create a new voice session."""
+    """Create a new voice session.
+    
+    user_id can be either:
+    - A Clerk ID (browser sessions): looked up or created via get_or_create_user
+    - An internal DB user UUID (SIP sessions): looked up directly by primary key
+    """
     from datetime import datetime
     
-    user = get_or_create_user(db, session_data.user_id)
+    incoming_user_id = session_data.user_id
+    
+    # Check if the incoming user_id is an internal DB UUID (36-char UUID format)
+    # vs a Clerk ID (e.g. "user_2abc..." or "sip-caller")
+    user = None
+    if len(incoming_user_id) == 36 and incoming_user_id.count('-') == 4:
+        # Looks like a UUID — try to find the user by internal primary key first
+        user = db.query(User).filter(User.id == incoming_user_id).first()
+    
+    if user is None:
+        # Fall back to Clerk ID lookup / creation
+        user = get_or_create_user(db, incoming_user_id)
     
     session = VoiceSession(
         id=str(uuid.uuid4()),
