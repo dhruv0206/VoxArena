@@ -50,6 +50,8 @@ class Agent(Base):
     type: Mapped[AgentType] = mapped_column(Enum(AgentType))
     config: Mapped[dict] = mapped_column(JSON, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    phone_number: Mapped[str | None] = mapped_column(String(50), nullable=True)  # Twilio/SIP number
+    twilio_sid: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Twilio number SID
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

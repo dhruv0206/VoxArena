@@ -49,6 +49,84 @@ async def fetch_agent_config(agent_id: str) -> dict | None:
         return None
 
 
+async def lookup_agent_by_phone(phone_number: str) -> dict | None:
+    """Look up an agent by its assigned Twilio phone number."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{BACKEND_API_URL}/telephony/lookup",
+                params={"phone_number": phone_number},
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning(f"No agent found for phone {phone_number}: {response.status_code}")
+                return None
+    except Exception as e:
+        logger.error(f"Error looking up agent by phone: {e}")
+        return None
+
+
+def get_sip_phone_number(room) -> str | None:
+    """Extract the called phone number from a SIP participant in the room."""
+    for participant in room.remote_participants.values():
+        attrs = participant.attributes or {}
+        # LiveKit SIP sets sip.trunkPhoneNumber to the number that was called
+        trunk_number = attrs.get("sip.trunkPhoneNumber")
+        if trunk_number:
+            logger.info(f"SIP participant detected — trunk phone number: {trunk_number}")
+            return trunk_number
+    return None
+
+
+async def create_backend_session(room_name: str, user_id: str, agent_id: str | None) -> str | None:
+    """Create a VoiceSession in the backend. Returns session ID."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{BACKEND_API_URL}/sessions/",
+                json={
+                    "room_name": room_name,
+                    "user_id": user_id,
+                    "agent_id": agent_id,
+                    "session_data": {},
+                },
+            )
+            if response.status_code == 201:
+                data = response.json()
+                logger.info(f"Created backend session: {data.get('id')}")
+                return data.get("id")
+            else:
+                logger.warning(f"Failed to create session: {response.status_code} {response.text}")
+    except Exception as e:
+        logger.error(f"Error creating backend session: {e}")
+    return None
+
+
+async def save_transcript_to_backend(room_name: str, content: str, speaker: str):
+    """Save a transcript line to the backend via the by-room endpoint."""
+    if not content or not content.strip():
+        return
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"{BACKEND_API_URL}/sessions/by-room/{room_name}/transcripts",
+                json={"content": content, "speaker": speaker.upper()},
+            )
+    except Exception as e:
+        logger.error(f"Error saving transcript: {e}")
+
+
+async def end_backend_session(room_name: str):
+    """End the session in the backend to calculate duration."""
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{BACKEND_API_URL}/sessions/by-room/{room_name}/end")
+            logger.info(f"Ended backend session for room {room_name}")
+    except Exception as e:
+        logger.error(f"Error ending backend session: {e}")
+
+
 class VoiceAssistant(Agent):
     """Custom voice assistant agent."""
     
@@ -83,8 +161,9 @@ async def entrypoint(ctx: agents.JobContext):
     system_prompt = DEFAULT_INSTRUCTIONS
     first_message = "Hello! How can I help you today?"
     first_message_mode = "assistant_speaks_first"  # or "assistant_waits"
+    metadata = {}
     
-    # Parse room metadata to get agent ID
+    # Parse room metadata to get agent ID (browser calls)
     if room_metadata:
         try:
             metadata = json.loads(room_metadata)
@@ -92,6 +171,20 @@ async def entrypoint(ctx: agents.JobContext):
             logger.info(f"Found agent ID in room metadata: {agent_id}")
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse room metadata: {e}")
+    
+    # --- SIP CALL DETECTION ---
+    # If no agentId from room metadata, check for a SIP participant
+    # and resolve the agent by the called phone number
+    if not agent_id or agent_id == "default":
+        sip_number = get_sip_phone_number(ctx.room)
+        if sip_number:
+            logger.info(f"SIP call detected to number: {sip_number}")
+            lookup = await lookup_agent_by_phone(sip_number)
+            if lookup:
+                agent_id = lookup.get("agent_id")
+                logger.info(f"Resolved SIP call to agent: {agent_id} ({lookup.get('name')})")
+            else:
+                logger.warning(f"No agent configured for SIP number {sip_number}, using defaults")
     
     # Fetch agent config if we have an agent ID
     if agent_id and agent_id != "default":
@@ -178,6 +271,15 @@ async def entrypoint(ctx: agents.JobContext):
     # Create TTS with the configured voice
     tts = ResembleTTS(voice_uuid=voice_id) if voice_id else ResembleTTS()
     
+    # --- CREATE BACKEND SESSION ---
+    # For SIP calls the user_id is the SIP caller; for browser calls it comes from metadata
+    session_user_id = metadata.get("userId", "sip-caller")
+    await create_backend_session(
+        room_name=ctx.room.name,
+        user_id=session_user_id,
+        agent_id=agent_id,
+    )
+    
     # Create the agent session with STT, LLM, and TTS
     session = AgentSession(
         stt=stt,
@@ -185,6 +287,23 @@ async def entrypoint(ctx: agents.JobContext):
         tts=tts,
         vad=silero.VAD.load(),
     )
+    
+    # --- TRANSCRIPT HOOKS ---
+    # Save user speech transcripts
+    @session.on("user_input_transcribed")
+    def on_user_transcript(transcript):
+        text = transcript.get("text", "") if isinstance(transcript, dict) else str(transcript)
+        if text.strip():
+            import asyncio
+            asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "USER"))
+    
+    # Save agent speech transcripts
+    @session.on("agent_speech_committed")
+    def on_agent_speech(message):
+        text = message.get("content", "") if isinstance(message, dict) else str(message)
+        if text.strip():
+            import asyncio
+            asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "AGENT"))
     
     # Start the session with the configured system prompt
     logger.info(f"Starting session with system_prompt ({len(system_prompt)} chars), first_message_mode={first_message_mode}")
@@ -207,6 +326,9 @@ async def entrypoint(ctx: agents.JobContext):
         await ctx.wait_for_shutdown()
     except Exception:
         pass
+    
+    # --- END BACKEND SESSION ---
+    await end_backend_session(ctx.room.name)
 
     # --- POST-CALL WEBHOOK EXECUTION ---
     # This runs after the room is disconnected/shutdown

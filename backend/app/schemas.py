@@ -47,6 +47,8 @@ class AgentResponse(AgentBase):
     id: str
     is_active: bool
     user_id: str
+    phone_number: Optional[str] = None
+    twilio_sid: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

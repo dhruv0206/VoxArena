@@ -60,12 +60,22 @@ function TrashIcon({ className }: { className?: string }) {
     );
 }
 
+function PhoneIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        </svg>
+    );
+}
+
 interface Agent {
     id: string;
     name: string;
     description: string | null;
     type: string;
     is_active: boolean;
+    phone_number?: string | null;
+    twilio_sid?: string | null;
     config: {
         system_prompt?: string;
         first_message?: string;
@@ -135,6 +145,96 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
         agent.config?.webhooks || DEFAULT_WEBHOOK_CONFIG
     );
+
+    // Phone number state
+    const [phoneNumber, setPhoneNumber] = useState(agent.phone_number || "");
+    const [assignPhone, setAssignPhone] = useState("");
+    const [searchAreaCode, setSearchAreaCode] = useState("");
+    const [searchResults, setSearchResults] = useState<{ phone_number: string; friendly_name: string; locality?: string; region?: string }[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isBuying, setIsBuying] = useState(false);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [isReleasing, setIsReleasing] = useState(false);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+    const handleSearchNumbers = useCallback(async () => {
+        setIsSearching(true);
+        try {
+            const params = new URLSearchParams({ limit: "5" });
+            if (searchAreaCode) params.set("area_code", searchAreaCode);
+            const res = await fetch(`${apiUrl}/telephony/numbers/search?${params}`);
+            if (!res.ok) throw new Error("Search failed");
+            setSearchResults(await res.json());
+        } catch (error) {
+            toast.error("Failed to search numbers");
+        } finally {
+            setIsSearching(false);
+        }
+    }, [apiUrl, searchAreaCode]);
+
+    const handleBuyNumber = useCallback(async (number: string) => {
+        setIsBuying(true);
+        try {
+            const res = await fetch(`${apiUrl}/telephony/numbers/buy`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agent_id: agent.id, phone_number: number }),
+            });
+            if (!res.ok) throw new Error("Purchase failed");
+            const data = await res.json();
+            setPhoneNumber(data.phone_number);
+            setSearchResults([]);
+            toast.success(`Number ${data.phone_number} purchased and assigned!`);
+        } catch (error) {
+            toast.error("Failed to buy number");
+        } finally {
+            setIsBuying(false);
+        }
+    }, [apiUrl, agent.id]);
+
+    const handleAssignNumber = useCallback(async () => {
+        if (!assignPhone.trim()) return;
+        setIsAssigning(true);
+        try {
+            const res = await fetch(`${apiUrl}/telephony/numbers/assign`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agent_id: agent.id, phone_number: assignPhone }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Assign failed");
+            }
+            const data = await res.json();
+            setPhoneNumber(data.phone_number);
+            setAssignPhone("");
+            toast.success(`Number ${data.phone_number} assigned!`);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to assign number");
+        } finally {
+            setIsAssigning(false);
+        }
+    }, [apiUrl, agent.id, assignPhone]);
+
+    const handleReleaseNumber = useCallback(async () => {
+        if (!confirm("Are you sure you want to release this phone number?")) return;
+        setIsReleasing(true);
+        try {
+            const res = await fetch(`${apiUrl}/telephony/numbers/release`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agent_id: agent.id }),
+            });
+            if (!res.ok) throw new Error("Release failed");
+            setPhoneNumber("");
+            toast.success("Phone number released.");
+        } catch (error) {
+            toast.error("Failed to release number");
+        } finally {
+            setIsReleasing(false);
+        }
+    }, [apiUrl, agent.id]);
 
     const handleSave = useCallback(async () => {
         setIsSaving(true);
@@ -252,12 +352,13 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
 
             {/* Tabs */}
             <Tabs defaultValue="model" className="w-full">
-                <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+                <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
                     <TabsTrigger value="model">Model</TabsTrigger>
                     <TabsTrigger value="voice">Voice</TabsTrigger>
                     <TabsTrigger value="transcriber">Transcriber</TabsTrigger>
                     <TabsTrigger value="tools">Tools</TabsTrigger>
                     <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
+                    <TabsTrigger value="phone">Phone</TabsTrigger>
                     <TabsTrigger value="analysis">Analysis</TabsTrigger>
                     <TabsTrigger value="compliance">Compliance</TabsTrigger>
                     <TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -426,6 +527,109 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                 {/* Webhooks Tab */}
                 <TabsContent value="webhooks" className="mt-6">
                     <WebhookConfig config={webhookConfig} onChange={setWebhookConfig} />
+                </TabsContent>
+
+                {/* Phone Number Tab */}
+                <TabsContent value="phone" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <PhoneIcon className="h-5 w-5" />
+                                Phone Number (Twilio SIP)
+                            </CardTitle>
+                            <CardDescription>
+                                Assign a Twilio phone number to this agent. Incoming calls to this number will be routed to this agent via SIP.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Current Number */}
+                            {phoneNumber ? (
+                                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Assigned Number</p>
+                                        <p className="text-2xl font-bold tracking-wide">{phoneNumber}</p>
+                                    </div>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={handleReleaseNumber}
+                                        disabled={isReleasing}
+                                    >
+                                        {isReleasing ? "Releasing..." : "Release Number"}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="p-4 rounded-lg border border-dashed text-center text-muted-foreground">
+                                    No phone number assigned. Assign an existing Twilio number or search for a new one below.
+                                </div>
+                            )}
+
+                            {/* Assign Existing Number */}
+                            {!phoneNumber && (
+                                <div className="space-y-3">
+                                    <Label className="text-base font-semibold">Assign Existing Number</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Enter a Twilio number you already own (E.164 format, e.g. +12125551234).
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="+12125551234"
+                                            value={assignPhone}
+                                            onChange={(e) => setAssignPhone(e.target.value)}
+                                        />
+                                        <Button
+                                            onClick={handleAssignNumber}
+                                            disabled={isAssigning || !assignPhone.trim()}
+                                        >
+                                            {isAssigning ? "Assigning..." : "Assign"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Search & Buy */}
+                            {!phoneNumber && (
+                                <div className="space-y-3">
+                                    <Label className="text-base font-semibold">Search &amp; Buy a New Number</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Area code (e.g. 212)"
+                                            value={searchAreaCode}
+                                            onChange={(e) => setSearchAreaCode(e.target.value)}
+                                            className="w-48"
+                                        />
+                                        <Button variant="outline" onClick={handleSearchNumbers} disabled={isSearching}>
+                                            {isSearching ? "Searching..." : "Search"}
+                                        </Button>
+                                    </div>
+                                    {searchResults.length > 0 && (
+                                        <div className="space-y-2">
+                                            {searchResults.map((num) => (
+                                                <div
+                                                    key={num.phone_number}
+                                                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                                                >
+                                                    <div>
+                                                        <p className="font-mono font-medium">{num.phone_number}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {[num.locality, num.region].filter(Boolean).join(", ")}
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleBuyNumber(num.phone_number)}
+                                                        disabled={isBuying}
+                                                    >
+                                                        {isBuying ? "Buying..." : "Buy"}
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 {/* Analysis Tab */}

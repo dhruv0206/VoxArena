@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "livekit-api>=0.8.0",
     "httpx>=0.28.0",
+    "twilio>=9.0.0",
 ]
 
 [project.optional-dependencies]

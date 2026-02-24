@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     livekit_api_secret: str = ""
     livekit_url: str = ""
     
+    # Twilio
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_sip_domain: str = ""  # e.g. voxarena.sip.livekit.cloud
+
     # Server
     port: int = 8000
     debug: bool = True
