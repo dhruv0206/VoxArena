@@ -148,7 +148,9 @@ async def entrypoint(ctx: agents.JobContext):
     
     # Wait for room to be fully connected
     await ctx.connect()
-    logger.info("Room connected, reading metadata...")
+    logger.info("Room connected, waiting for participant...")
+    participant = await ctx.wait_for_participant()
+    logger.info(f"Participant joined: {participant.identity}, reading metadata...")
     
     # Get agent ID from room metadata
     room_metadata = ctx.room.metadata
@@ -272,8 +274,15 @@ async def entrypoint(ctx: agents.JobContext):
     tts = ResembleTTS(voice_uuid=voice_id) if voice_id else ResembleTTS()
     
     # --- CREATE BACKEND SESSION ---
-    # For SIP calls the user_id is the SIP caller; for browser calls it comes from metadata
-    session_user_id = metadata.get("userId", "sip-caller")
+    # For SIP calls, use the agent owner's user_id so sessions appear in their call log.
+    # For browser calls, use the Clerk userId from room metadata.
+    # agent_config["user_id"] is the agent owner's internal DB user UUID.
+    if metadata.get("userId"):
+        session_user_id = metadata["userId"]
+    elif agent_config and agent_config.get("user_id"):
+        session_user_id = agent_config["user_id"]  # Agent owner's DB UUID for SIP calls
+    else:
+        session_user_id = "sip-caller"  # Last-resort fallback
     await create_backend_session(
         room_name=ctx.room.name,
         user_id=session_user_id,
@@ -289,19 +298,45 @@ async def entrypoint(ctx: agents.JobContext):
     )
     
     # --- TRANSCRIPT HOOKS ---
-    # Save user speech transcripts
+    # Save user speech transcripts (only final results, not intermediate streaming partials)
     @session.on("user_input_transcribed")
     def on_user_transcript(transcript):
-        text = transcript.get("text", "") if isinstance(transcript, dict) else str(transcript)
-        if text.strip():
+        # transcript is a UserInputTranscribedEvent with .transcript (str) and .is_final (bool)
+        is_final = getattr(transcript, "is_final", True)
+        if not is_final:
+            return  # Skip intermediate/partial results
+        text = getattr(transcript, "transcript", None) or getattr(transcript, "text", None)
+        if not text:
+            text = transcript.get("transcript", transcript.get("text", "")) if isinstance(transcript, dict) else ""
+        if text and text.strip():
             import asyncio
-            asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "USER"))
+            asyncio.create_task(save_transcript_to_backend(ctx.room.name, text.strip(), "USER"))
     
-    # Save agent speech transcripts
-    @session.on("agent_speech_committed")
-    def on_agent_speech(message):
-        text = message.get("content", "") if isinstance(message, dict) else str(message)
-        if text.strip():
+    # Save agent speech transcripts via conversation_item_added (role='assistant')
+    @session.on("conversation_item_added")
+    def on_conversation_item(event):
+        item = getattr(event, "item", None)
+        if item is None:
+            return
+        role = getattr(item, "role", None)
+        if role != "assistant":
+            return  # Only capture agent turns here; user turns come from user_input_transcribed
+        # Extract text content from ChatMessage
+        content = getattr(item, "content", None)
+        if isinstance(content, list):
+            # content is a list of content parts; extract text parts
+            text_parts = []
+            for part in content:
+                if isinstance(part, str):
+                    text_parts.append(part)
+                elif hasattr(part, "text"):
+                    text_parts.append(part.text)
+            text = " ".join(text_parts).strip()
+        elif isinstance(content, str):
+            text = content.strip()
+        else:
+            text = str(content).strip() if content else ""
+        if text:
             import asyncio
             asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "AGENT"))
     
