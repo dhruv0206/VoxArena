@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession
 
-from livekit.plugins import assemblyai, deepgram, google, silero
+from livekit.plugins import assemblyai, deepgram, elevenlabs, google, silero
 
 from resemble_tts import ResembleTTS
 
@@ -208,6 +208,9 @@ async def entrypoint(ctx: agents.JobContext):
     if stt_provider == "assemblyai":
         stt = assemblyai.STT()
         logger.info("Using AssemblyAI for STT")
+    elif stt_provider == "elevenlabs":
+        stt = elevenlabs.STT()
+        logger.info("Using ElevenLabs for STT")
     else:
         stt = deepgram.STT()
         logger.info("Using Deepgram for STT")

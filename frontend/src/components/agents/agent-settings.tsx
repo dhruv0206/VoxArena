@@ -108,6 +108,7 @@ const FIRST_MESSAGE_MODES = [
 const STT_PROVIDERS = [
     { id: "deepgram", name: "Deepgram Nova 2" },
     { id: "assemblyai", name: "AssemblyAI" },
+    { id: "elevenlabs", name: "ElevenLabs" },
 ];
 
 interface ResembleVoice {
