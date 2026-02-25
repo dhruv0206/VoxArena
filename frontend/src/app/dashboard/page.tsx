@@ -291,8 +291,19 @@ export default async function DashboardPage() {
                                         <Link key={session.id} href={`/dashboard/logs/${session.id}`} className="block">
                                             <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <div className="relative w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                                         <MicrophoneIcon className="h-5 w-5" />
+                                                        {session.analysis?.sentiment && (
+                                                            <span
+                                                                className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${
+                                                                    session.analysis.sentiment === "positive"
+                                                                        ? "bg-emerald-500"
+                                                                        : session.analysis.sentiment === "negative"
+                                                                            ? "bg-red-500"
+                                                                            : "bg-yellow-500"
+                                                                }`}
+                                                            />
+                                                        )}
                                                     </div>
                                                     <div>
                                                         {(() => {

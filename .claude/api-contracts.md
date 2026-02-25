@@ -19,8 +19,11 @@ Agent: { id, name, systemPrompt, sttProvider,
 ### Sessions
 GET /api/sessions         → { sessions: Session[], total: number }
 GET /api/sessions/:id     → Session
+GET /api/sessions/:id/analysis → CallAnalysis | null
 
-Session: { id, agentId, startedAt, endedAt, transcript, duration }
+Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis? }
+
+CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_items }
 
 ### LiveKit
 POST /api/livekit/token   → { token: string, roomName: string }

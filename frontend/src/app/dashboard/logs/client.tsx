@@ -71,6 +71,13 @@ function formatDuration(seconds: number | null): string {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+interface SessionAnalysis {
+    summary?: string;
+    sentiment?: "positive" | "neutral" | "negative";
+    sentiment_score?: number;
+    outcome?: string;
+}
+
 interface Session {
     id: string;
     room_name: string;
@@ -78,6 +85,7 @@ interface Session {
     duration: number | null;
     created_at: string;
     agent_name?: string;
+    analysis?: SessionAnalysis | null;
 }
 
 interface PaginatedResponse {
@@ -229,8 +237,20 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                                 <Link key={session.id} href={`/dashboard/logs/${session.id}`} className="block">
                                     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <div className="relative h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                                                 <MicrophoneIcon className="h-5 w-5 text-primary" />
+                                                {session.analysis?.sentiment && (
+                                                    <span
+                                                        className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${
+                                                            session.analysis.sentiment === "positive"
+                                                                ? "bg-emerald-500"
+                                                                : session.analysis.sentiment === "negative"
+                                                                    ? "bg-red-500"
+                                                                    : "bg-yellow-500"
+                                                        }`}
+                                                        title={`Sentiment: ${session.analysis.sentiment}`}
+                                                    />
+                                                )}
                                             </div>
                                             <div>
                                                 {(() => {
@@ -247,6 +267,11 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                                                 <p className="text-sm text-muted-foreground">
                                                     {new Date(session.created_at).toLocaleString()}
                                                 </p>
+                                                {session.analysis?.summary && (
+                                                    <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-1 max-w-md">
+                                                        {session.analysis.summary}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">

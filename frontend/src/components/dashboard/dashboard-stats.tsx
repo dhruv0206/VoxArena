@@ -135,6 +135,16 @@ export function DashboardStats({ userId }: DashboardStatsProps) {
 
     const activeAgents = agents.filter(a => a.is_active).length
 
+    // Analysis-based metrics
+    const sessionsWithAnalysis = currSessions.filter(s => s.analysis)
+    const avgSentiment = sessionsWithAnalysis.length > 0
+        ? sessionsWithAnalysis.reduce((a, s) => a + (s.analysis?.sentiment_score ?? 0), 0) / sessionsWithAnalysis.length
+        : null
+    const resolvedCount = sessionsWithAnalysis.filter(s => s.analysis?.outcome === "resolved").length
+    const resolutionRate = sessionsWithAnalysis.length > 0
+        ? Math.round((resolvedCount / sessionsWithAnalysis.length) * 100)
+        : null
+
     const formatDelta = (d: number | null, suffix = "%") =>
         d === null ? null : `${d >= 0 ? "+" : ""}${d}${suffix}`
 
@@ -224,6 +234,20 @@ export function DashboardStats({ userId }: DashboardStatsProps) {
                         delta={isLoading ? null : formatDelta(successDelta, "pp")}
                         positive={successDelta === null || successDelta >= 0}
                         noData={!isLoading && prevSessions.length === 0}
+                    />
+                    <StatCell
+                        label="Avg Sentiment"
+                        value={isLoading ? "—" : avgSentiment !== null ? `${(avgSentiment * 100).toFixed(0)}%` : "—"}
+                        delta={null}
+                        positive={true}
+                        noData={!isLoading && sessionsWithAnalysis.length === 0}
+                    />
+                    <StatCell
+                        label="Resolution Rate"
+                        value={isLoading ? "—" : resolutionRate !== null ? `${resolutionRate}%` : "—"}
+                        delta={null}
+                        positive={true}
+                        noData={!isLoading && sessionsWithAnalysis.length === 0}
                     />
                     <StatCell
                         label="Active Agents"

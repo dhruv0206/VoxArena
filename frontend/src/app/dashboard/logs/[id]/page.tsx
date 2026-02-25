@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/dashboard/layout-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { CallAnalysis } from "@/lib/api";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -47,6 +48,7 @@ interface Session {
     duration: number | null;
     created_at: string;
     agent_name?: string;
+    analysis?: CallAnalysis | null;
 }
 
 interface Transcript {
@@ -239,6 +241,104 @@ export default async function CallDetailsPage({
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Call Analysis */}
+                {session.analysis ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Call Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Summary */}
+                            <div>
+                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Summary</h3>
+                                <p className="text-sm leading-relaxed">{session.analysis.summary}</p>
+                            </div>
+
+                            {/* Sentiment + Outcome row */}
+                            <div className="flex flex-wrap gap-4">
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Sentiment</h3>
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                session.analysis.sentiment === "positive"
+                                                    ? "border-emerald-500 text-emerald-600 bg-emerald-500/10"
+                                                    : session.analysis.sentiment === "negative"
+                                                        ? "border-red-500 text-red-600 bg-red-500/10"
+                                                        : "border-yellow-500 text-yellow-600 bg-yellow-500/10"
+                                            }
+                                        >
+                                            {session.analysis.sentiment}
+                                        </Badge>
+                                        <span className="text-sm text-muted-foreground">
+                                            {(session.analysis.sentiment_score * 100).toFixed(0)}%
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Outcome</h3>
+                                    <Badge
+                                        variant="outline"
+                                        className={
+                                            session.analysis.outcome === "resolved"
+                                                ? "border-emerald-500 text-emerald-600 bg-emerald-500/10"
+                                                : session.analysis.outcome === "unresolved"
+                                                    ? "border-red-500 text-red-600 bg-red-500/10"
+                                                    : session.analysis.outcome === "transferred"
+                                                        ? "border-yellow-500 text-yellow-600 bg-yellow-500/10"
+                                                        : "border-orange-500 text-orange-600 bg-orange-500/10"
+                                        }
+                                    >
+                                        {session.analysis.outcome}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            {/* Topics */}
+                            {session.analysis.topics && session.analysis.topics.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Topics</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {session.analysis.topics.map((topic) => (
+                                            <Badge key={topic} variant="secondary" className="text-xs">
+                                                {topic}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Items */}
+                            {session.analysis.action_items && session.analysis.action_items.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Action Items</h3>
+                                    <ul className="space-y-2">
+                                        {session.analysis.action_items.map((item, i) => (
+                                            <li key={i} className="flex items-start gap-2 text-sm">
+                                                <div className="mt-0.5 h-4 w-4 rounded border border-muted-foreground/30 flex-shrink-0" />
+                                                <span>{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                ) : session.status === "COMPLETED" ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Call Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-center py-8 text-muted-foreground">
+                                <p>Analysis is processing or not available for this call.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : null}
 
                 {/* Audio Player (Placeholder for future) */}
                 <Card>
