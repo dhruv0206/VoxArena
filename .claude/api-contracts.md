@@ -29,6 +29,17 @@ CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_ite
 POST /api/livekit/token   → { token: string, roomName: string }
 Body: { agentId, roomName }
 
+### Usage
+POST /api/usage/events   → UsageEvent
+Body: { session_id, user_id, agent_id?, event_type, provider, usage_data }
+
+event_type: "stt_minutes" | "llm_tokens" | "tts_characters"
+usage_data (stt_minutes):    { audio_duration_seconds: float }
+usage_data (llm_tokens):     { input_tokens: int, output_tokens: int }
+usage_data (tts_characters): { character_count: int }
+
+UsageEvent: { id, session_id, user_id, agent_id?, event_type, provider, usage_data, created_at }
+
 ### Dashboard
 GET /api/dashboard/metrics → {
   totalSessions, totalAgents,
