@@ -1,10 +1,29 @@
 {
-  "ticket": null,
-  "status": "idle",
-  "completed": [],
+  "ticket": "WS-10a",
+  "status": "complete",
+  "completed": [
+    "Updated api-contracts.md with usage/cost endpoint contracts",
+    "Added UsageEvent model with indexes on user_id, agent_id, created_at",
+    "Added total_cost (Numeric) and cost_breakdown (JSON) to VoiceSession",
+    "Created Alembic migration 20260225_120000_add_cost_tracking",
+    "Added Pydantic schemas for all usage/cost request/response types",
+    "Defined configurable cost rates in app/cost_rates.py",
+    "Created POST /api/usage/events endpoint (usage router)",
+    "Created GET /api/costs/summary endpoint",
+    "Created GET /api/costs/timeline endpoint with period/date filtering",
+    "Created GET /api/costs/by-agent endpoint",
+    "Created GET /api/sessions/{id}/cost-breakdown endpoint",
+    "Added cost aggregation background task on session end",
+    "Registered usage and costs routers in main.py"
+  ],
   "in_progress": [],
   "pending": [],
-  "decisions": [],
+  "decisions": [
+    "Cost rates stored in app/cost_rates.py as Decimal values for precision",
+    "UsageEvent.total_cost is Numeric(12,6) for sub-cent precision",
+    "Cost aggregation runs as background task alongside call analysis on session end",
+    "Session cost-breakdown endpoint placed on sessions router (GET /api/sessions/{id}/cost-breakdown)"
+  ],
   "blockers": [],
-  "last_updated": null
+  "last_updated": "2026-02-25T12:00:00Z"
 }

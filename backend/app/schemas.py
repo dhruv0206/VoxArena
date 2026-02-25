@@ -1,7 +1,8 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
-from app.models import AgentType, SessionStatus, TranscriptSpeaker
+from decimal import Decimal
+from app.models import AgentType, SessionStatus, TranscriptSpeaker, UsageEventType
 
 
 # User Schemas
@@ -141,3 +142,59 @@ class TokenResponse(BaseModel):
     token: str
     ws_url: str
     room_name: str
+
+
+# Usage Event Schemas
+class UsageEventCreate(BaseModel):
+    session_id: str
+    user_id: str
+    agent_id: Optional[str] = None
+    provider: str
+    event_type: UsageEventType
+    quantity: Decimal
+    unit_cost: Decimal
+    total_cost: Decimal
+
+
+class UsageEventResponse(BaseModel):
+    id: str
+    session_id: str
+    user_id: str
+    agent_id: Optional[str] = None
+    provider: str
+    event_type: UsageEventType
+    quantity: Decimal
+    unit_cost: Decimal
+    total_cost: Decimal
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Cost Endpoint Schemas
+class CostSummaryResponse(BaseModel):
+    total_cost: Decimal
+    this_month_cost: Decimal
+    by_provider: dict[str, Decimal]
+
+
+class TimelinePointResponse(BaseModel):
+    date: str
+    total_cost: Decimal
+    by_provider: dict[str, Decimal]
+
+
+class AgentCostResponse(BaseModel):
+    agent_id: str
+    agent_name: str
+    total_cost: Decimal
+    session_count: int
+    event_count: int
+
+
+class SessionCostBreakdownResponse(BaseModel):
+    session_id: str
+    total_cost: Decimal
+    events: list[UsageEventResponse]
+    cost_by_type: dict[str, Decimal]
