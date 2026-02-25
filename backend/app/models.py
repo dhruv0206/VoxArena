@@ -33,6 +33,11 @@ class CallStatus(enum.Enum):
     NO_ANSWER = "NO_ANSWER"
 
 
+class TransferType(enum.Enum):
+    WARM = "WARM"
+    COLD = "COLD"
+
+
 class TranscriptSpeaker(enum.Enum):
     USER = "USER"
     AGENT = "AGENT"
@@ -103,6 +108,9 @@ class VoiceSession(Base):
     session_data: Mapped[dict] = mapped_column(JSON, default=dict)
     total_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
     cost_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    transferred_to: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    transfer_type: Mapped[TransferType | None] = mapped_column(Enum(TransferType), nullable=True)
+    transfer_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

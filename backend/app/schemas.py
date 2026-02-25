@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from decimal import Decimal
-from app.models import AgentType, SessionStatus, TranscriptSpeaker, CallDirection, CallStatus, UsageEventType
+from app.models import AgentType, SessionStatus, TranscriptSpeaker, CallDirection, CallStatus, UsageEventType, TransferType
 
 
 # User Schemas
@@ -90,6 +90,9 @@ class VoiceSessionResponse(VoiceSessionBase):
     outbound_phone_number: Optional[str] = None
     call_status: Optional[CallStatus] = None
     analysis: Optional[dict] = None  # Extracted from session_data["analysis"]
+    transferred_to: Optional[str] = None
+    transfer_type: Optional[TransferType] = None
+    transfer_timestamp: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -147,6 +150,7 @@ class TokenResponse(BaseModel):
     room_name: str
 
 
+<<<<<<< HEAD
 # Outbound Call Schemas
 class OutboundCallRequest(BaseModel):
     agent_id: str
@@ -232,3 +236,17 @@ class SessionCostBreakdownResponse(BaseModel):
     total_cost: Decimal
     events: list[UsageEventResponse]
     cost_by_type: dict[str, Decimal]
+
+
+# Call Transfer Schemas
+class TransferRequest(BaseModel):
+    phone_number: str  # E.164 format
+    type: TransferType
+
+
+class TransferResponse(BaseModel):
+    session_id: str
+    transfer_type: TransferType
+    transferred_to: str
+    status: str
+    message: str

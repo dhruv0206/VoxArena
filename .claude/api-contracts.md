@@ -22,7 +22,8 @@ GET /api/sessions         → { sessions: Session[], total: number }
 GET /api/sessions/:id     → Session
 GET /api/sessions/:id/analysis → CallAnalysis | null
 
-Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis?, direction? }
+Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis?, direction?,
+           transferredTo?, transferType?, transferTimestamp? }
 
 CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_items }
 
@@ -36,6 +37,12 @@ GET  /api/telephony/outbound/call/:call_id/status → { call_id, status, duratio
 
 POST /api/telephony/outbound/call/:call_id/end → { success: boolean }
   Ends an active outbound call.
+
+### Call Transfer
+POST /api/sessions/:id/transfer → TransferResponse
+Body: { phone_number: string (E.164), type: "warm" | "cold" }
+
+TransferResponse: { session_id, transfer_type, transferred_to, status, message }
 
 ### LiveKit
 POST /api/livekit/token   → { token: string, roomName: string }

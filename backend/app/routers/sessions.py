@@ -6,7 +6,8 @@ import uuid
 from decimal import Decimal
 
 from app.database import get_db
-from app.models import VoiceSession, UsageEvent, User, Transcript, SessionStatus
+from app.config import get_settings
+from app.models import VoiceSession, UsageEvent, User, Transcript, SessionStatus, TransferType
 from app.schemas import (
     VoiceSessionCreate,
     VoiceSessionUpdate,
@@ -16,9 +17,12 @@ from app.schemas import (
     TranscriptResponse,
     SessionCostBreakdownResponse,
     UsageEventResponse,
+    TransferRequest,
+    TransferResponse,
 )
 from app.services.call_analysis import analyze_call
 from app.services.cost_aggregation import aggregate_session_cost
+from app.services.call_transfer import validate_e164, cold_transfer, warm_transfer
 
 router = APIRouter()
 
@@ -251,6 +255,69 @@ async def add_transcript(
     db.commit()
     db.refresh(transcript)
     return transcript
+
+
+@router.post("/{session_id}/transfer", response_model=TransferResponse)
+async def transfer_call(
+    session_id: str,
+    transfer_data: TransferRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Transfer an active call to another phone number.
+
+    Cold transfer: caller connected to new number, agent disconnected.
+    Warm transfer: three-way call (caller + agent + target), agent drops when ready.
+    """
+    from datetime import datetime
+
+    # Validate E.164 phone number
+    if not validate_e164(transfer_data.phone_number):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid phone number. Must be in E.164 format (e.g. +15551234567)",
+        )
+
+    # Look up session
+    session = db.query(VoiceSession).filter(VoiceSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != SessionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Session is not active")
+
+    if session.transferred_to:
+        raise HTTPException(status_code=400, detail="Session has already been transferred")
+
+    # Get SIP trunk ID from settings
+    settings = get_settings()
+    sip_trunk_id = settings.livekit_sip_trunk_id
+    if not sip_trunk_id:
+        raise HTTPException(status_code=500, detail="SIP trunk not configured")
+
+    # Execute the transfer
+    if transfer_data.type == TransferType.COLD:
+        result = await cold_transfer(session.room_name, transfer_data.phone_number, sip_trunk_id)
+    else:
+        result = await warm_transfer(session.room_name, transfer_data.phone_number, sip_trunk_id)
+
+    if not result.success:
+        raise HTTPException(status_code=502, detail=result.message)
+
+    # Update session record with transfer details
+    session.transferred_to = transfer_data.phone_number
+    session.transfer_type = transfer_data.type
+    session.transfer_timestamp = datetime.utcnow()
+    db.commit()
+    db.refresh(session)
+
+    return TransferResponse(
+        session_id=session.id,
+        transfer_type=transfer_data.type,
+        transferred_to=transfer_data.phone_number,
+        status="completed" if transfer_data.type == TransferType.COLD else "initiated",
+        message=result.message,
+    )
 
 
 @router.get("/by-room/{room_name}", response_model=VoiceSessionResponse)
