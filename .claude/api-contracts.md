@@ -25,6 +25,10 @@ Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis? }
 
 CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_items }
 
+POST /api/sessions/:id/transfer → TransferResponse
+Body: { phone_number: string, type: "warm" | "cold" }
+TransferResponse: { status: "initiated" | "failed", session_id: string, phone_number: string, type: "warm" | "cold" }
+
 ### LiveKit
 POST /api/livekit/token   → { token: string, roomName: string }
 Body: { agentId, roomName }

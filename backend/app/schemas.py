@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
-from typing import Optional
+from typing import Literal, Optional
 from app.models import AgentType, SessionStatus, TranscriptSpeaker
 
 
@@ -128,6 +128,19 @@ class TranscriptResponse(TranscriptBase):
 
     class Config:
         from_attributes = True
+
+
+# Transfer Schemas
+class TransferRequest(BaseModel):
+    phone_number: str
+    type: Literal["warm", "cold"]
+
+
+class TransferResponse(BaseModel):
+    status: Literal["initiated", "failed"]
+    session_id: str
+    phone_number: str
+    type: Literal["warm", "cold"]
 
 
 # LiveKit Schemas

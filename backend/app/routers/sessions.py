@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -12,6 +14,8 @@ from app.schemas import (
     TranscriptCreate,
     TranscriptCreateByRoom,
     TranscriptResponse,
+    TransferRequest,
+    TransferResponse,
 )
 from app.services.call_analysis import analyze_call
 
@@ -43,8 +47,6 @@ async def get_sessions(
     db: Session = Depends(get_db),
 ):
     """Get all sessions for the authenticated user with pagination and date filtering."""
-    from datetime import datetime
-    
     if not x_user_id:
         raise HTTPException(status_code=401, detail="User ID required")
     
@@ -141,13 +143,11 @@ async def create_session(
     db: Session = Depends(get_db),
 ):
     """Create a new voice session.
-    
+
     user_id can be either:
     - A Clerk ID (browser sessions): looked up or created via get_or_create_user
     - An internal DB user UUID (SIP sessions): looked up directly by primary key
     """
-    from datetime import datetime
-    
     incoming_user_id = session_data.user_id
     
     # Check if the incoming user_id is an internal DB UUID (36-char UUID format)
@@ -196,6 +196,40 @@ async def update_session(
     return session
 
 
+@router.post("/{session_id}/transfer", response_model=TransferResponse)
+async def transfer_session(
+    session_id: str,
+    transfer_data: TransferRequest,
+    db: Session = Depends(get_db),
+):
+    """Initiate a call transfer for an active session."""
+    session = db.query(VoiceSession).filter(VoiceSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != SessionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Session is not active")
+
+    # Record transfer in session_data
+    transfer_info = {
+        "phone_number": transfer_data.phone_number,
+        "type": transfer_data.type,
+        "initiated_at": datetime.utcnow().isoformat(),
+    }
+    data = dict(session.session_data or {})
+    data["transfer"] = transfer_info
+    session.session_data = data
+    db.commit()
+    db.refresh(session)
+
+    return TransferResponse(
+        status="initiated",
+        session_id=session.id,
+        phone_number=transfer_data.phone_number,
+        type=transfer_data.type,
+    )
+
+
 @router.post("/{session_id}/transcripts", response_model=TranscriptResponse, status_code=201)
 async def add_transcript(
     session_id: str,
@@ -235,8 +269,6 @@ async def end_session_by_room(
     db: Session = Depends(get_db),
 ):
     """End a session by room name and calculate duration."""
-    from datetime import datetime
-
     session = db.query(VoiceSession).filter(VoiceSession.room_name == room_name).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")

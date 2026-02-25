@@ -1,10 +1,24 @@
 {
-  "ticket": null,
-  "status": "idle",
-  "completed": [],
+  "ticket": "WS-7b",
+  "status": "complete",
+  "completed": [
+    "Updated api-contracts.md with POST /api/sessions/:id/transfer endpoint",
+    "Added TransferRequest and TransferResponse schemas to backend",
+    "Added POST /{session_id}/transfer endpoint to sessions router",
+    "Created create_transfer_call_tool() built-in function in agent",
+    "Auto-injected transfer_call into every agent's function tools",
+    "Implemented cold transfer (agent disconnects after handoff)",
+    "Implemented warm transfer (agent stays for intro then returns)",
+    "Added transfer failure handling with caller-facing error messages"
+  ],
   "in_progress": [],
   "pending": [],
-  "decisions": [],
+  "decisions": [
+    "Used session_id_holder dict pattern to share session ID between entrypoint and transfer tool closure",
+    "Transfer metadata stored in session_data JSON field (no schema migration needed)",
+    "Cold transfer uses session.close() after 3s delay to let TTS finish",
+    "Warm transfer returns control to LLM so it can facilitate intro naturally"
+  ],
   "blockers": [],
-  "last_updated": null
+  "last_updated": "2026-02-25"
 }
