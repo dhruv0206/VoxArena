@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -52,8 +54,6 @@ async def get_sessions(
     db: Session = Depends(get_db),
 ):
     """Get all sessions for the authenticated user with pagination and date filtering."""
-    from datetime import datetime
-    
     if not x_user_id:
         raise HTTPException(status_code=401, detail="User ID required")
     
@@ -179,13 +179,11 @@ async def create_session(
     db: Session = Depends(get_db),
 ):
     """Create a new voice session.
-    
+
     user_id can be either:
     - A Clerk ID (browser sessions): looked up or created via get_or_create_user
     - An internal DB user UUID (SIP sessions): looked up directly by primary key
     """
-    from datetime import datetime
-    
     incoming_user_id = session_data.user_id
     
     # Check if the incoming user_id is an internal DB UUID (36-char UUID format)
@@ -336,8 +334,6 @@ async def end_session_by_room(
     db: Session = Depends(get_db),
 ):
     """End a session by room name and calculate duration."""
-    from datetime import datetime
-
     session = db.query(VoiceSession).filter(VoiceSession.room_name == room_name).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")

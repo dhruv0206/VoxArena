@@ -130,6 +130,113 @@ async def end_backend_session(room_name: str):
         logger.error(f"Error ending backend session: {e}")
 
 
+def create_transfer_call_tool(room_name: str, session_id_holder: dict) -> object:
+    """Create the built-in transfer_call function tool.
+
+    This tool is auto-injected into every agent — it's not stored in config.
+    It handles both cold (immediate disconnect) and warm (stay for intro) transfers.
+    """
+
+    raw_schema = {
+        "type": "function",
+        "name": "transfer_call",
+        "description": (
+            "Transfer the current call to another phone number. "
+            "Use type 'cold' for an immediate handoff (you disconnect right away). "
+            "Use type 'warm' for a warm transfer (you stay on to introduce the caller, "
+            "then disconnect)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "phone_number": {
+                    "type": "string",
+                    "description": "The phone number to transfer the call to (E.164 format preferred)",
+                },
+                "type": {
+                    "type": "string",
+                    "enum": ["warm", "cold"],
+                    "description": "Transfer type: 'cold' = immediate handoff, 'warm' = agent stays for intro",
+                },
+            },
+            "required": ["phone_number", "type"],
+        },
+    }
+
+    async def handler(raw_arguments: dict[str, object], context: RunContext):
+        phone_number = str(raw_arguments.get("phone_number", ""))
+        transfer_type = str(raw_arguments.get("type", "cold"))
+        session_id = session_id_holder.get("id")
+
+        logger.info(f"transfer_call invoked: phone={phone_number}, type={transfer_type}, session={session_id}")
+
+        # Announce the transfer to the caller
+        session = context.session
+        if transfer_type == "warm":
+            announce_msg = f"Let me transfer you to {phone_number}. I'll stay on the line to introduce you."
+        else:
+            announce_msg = f"Let me transfer you to {phone_number}. One moment please."
+
+        if session:
+            await session.say(announce_msg)
+
+        # Log to transcript
+        asyncio.create_task(
+            save_transcript_to_backend(room_name, f"[Transfer: {transfer_type} → {phone_number}]", "AGENT")
+        )
+
+        # Call backend to initiate transfer
+        if not session_id:
+            logger.error("No session ID available for transfer")
+            if session:
+                await session.say("I'm sorry, I wasn't able to complete the transfer. Let me continue helping you.")
+            return "Error: No active session to transfer"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{BACKEND_API_URL}/sessions/{session_id}/transfer",
+                    json={"phone_number": phone_number, "type": transfer_type},
+                    timeout=10,
+                )
+                response.raise_for_status()
+                result = response.json()
+        except Exception as e:
+            logger.error(f"Transfer API call failed: {e}")
+            if session:
+                await session.say("I'm sorry, the transfer didn't go through. Let me continue helping you.")
+            asyncio.create_task(
+                save_transcript_to_backend(room_name, f"[Transfer failed: {e}]", "AGENT")
+            )
+            return f"Transfer failed: {str(e)}"
+
+        logger.info(f"Transfer initiated: {result}")
+
+        # Handle cold vs warm disconnect
+        if transfer_type == "cold":
+            # Cold transfer: agent disconnects after handoff
+            if session:
+                await session.say("Your call is being transferred now. Goodbye!")
+            asyncio.create_task(
+                save_transcript_to_backend(room_name, "[Agent disconnected after cold transfer]", "AGENT")
+            )
+            # Give TTS time to finish speaking before disconnecting
+            await asyncio.sleep(3)
+            await end_backend_session(room_name)
+            if context.session:
+                context.session.close()
+        else:
+            # Warm transfer: agent stays for intro, then drops
+            # Return result so LLM can facilitate the introduction
+            asyncio.create_task(
+                save_transcript_to_backend(room_name, "[Warm transfer initiated — agent staying for intro]", "AGENT")
+            )
+
+        return f"Transfer {transfer_type} to {phone_number} initiated successfully. Status: {result.get('status', 'unknown')}"
+
+    return function_tool(handler, raw_schema=raw_schema)
+
+
 def create_function_tools(functions_config: list[dict], room_name: str) -> list:
     """Build dynamic LiveKit function tools from agent config.functions array.
 
@@ -403,11 +510,13 @@ async def entrypoint(ctx: agents.JobContext):
         session_user_id = agent_config["user_id"]  # Agent owner's DB UUID for SIP calls
     else:
         session_user_id = "sip-caller"  # Last-resort fallback
+    session_id_holder = {"id": None}
     session_id = await create_backend_session(
         room_name=ctx.room.name,
         user_id=session_user_id,
         agent_id=agent_id,
     )
+    session_id_holder["id"] = session_id
     
     # Create the agent session with STT, LLM, and TTS
     session = AgentSession(
@@ -500,7 +609,12 @@ async def entrypoint(ctx: agents.JobContext):
         functions_config = agent_config.get("config", {}).get("functions", [])
         if functions_config:
             function_tools = create_function_tools(functions_config, ctx.room.name)
-            logger.info(f"Registered {len(function_tools)} function tool(s)")
+            logger.info(f"Registered {len(function_tools)} config function tool(s)")
+
+    # Always inject built-in transfer_call tool (available to every agent)
+    transfer_tool = create_transfer_call_tool(ctx.room.name, session_id_holder)
+    function_tools.append(transfer_tool)
+    logger.info(f"Registered built-in transfer_call tool (total tools: {len(function_tools)})")
 
     # Start the session with the configured system prompt and tools
     logger.info(f"Starting session with system_prompt ({len(system_prompt)} chars), first_message_mode={first_message_mode}")

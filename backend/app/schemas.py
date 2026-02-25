@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
-from typing import Optional
+from typing import Literal, Optional
 from decimal import Decimal
 from app.models import AgentType, SessionStatus, TranscriptSpeaker, CallDirection, CallStatus, UsageEventType, TransferType
 
@@ -150,7 +150,6 @@ class TokenResponse(BaseModel):
     room_name: str
 
 
-<<<<<<< HEAD
 # Outbound Call Schemas
 class OutboundCallRequest(BaseModel):
     agent_id: str
