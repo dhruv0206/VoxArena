@@ -21,9 +21,16 @@ GET /api/sessions         → { sessions: Session[], total: number }
 GET /api/sessions/:id     → Session
 GET /api/sessions/:id/analysis → CallAnalysis | null
 
-Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis? }
+Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis?,
+           transferredTo?, transferType?, transferTimestamp? }
 
 CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_items }
+
+### Call Transfer
+POST /api/sessions/:id/transfer → TransferResponse
+Body: { phone_number: string (E.164), type: "warm" | "cold" }
+
+TransferResponse: { session_id, transfer_type, transferred_to, status, message }
 
 ### LiveKit
 POST /api/livekit/token   → { token: string, roomName: string }

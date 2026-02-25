@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
-from app.models import AgentType, SessionStatus, TranscriptSpeaker
+from app.models import AgentType, SessionStatus, TranscriptSpeaker, TransferType
 
 
 # User Schemas
@@ -86,6 +86,9 @@ class VoiceSessionResponse(VoiceSessionBase):
     agent_id: Optional[str]
     agent_name: Optional[str] = None  # Added for displaying agent name in UI
     analysis: Optional[dict] = None  # Extracted from session_data["analysis"]
+    transferred_to: Optional[str] = None
+    transfer_type: Optional[TransferType] = None
+    transfer_timestamp: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -141,3 +144,17 @@ class TokenResponse(BaseModel):
     token: str
     ws_url: str
     room_name: str
+
+
+# Call Transfer Schemas
+class TransferRequest(BaseModel):
+    phone_number: str  # E.164 format
+    type: TransferType
+
+
+class TransferResponse(BaseModel):
+    session_id: str
+    transfer_type: TransferType
+    transferred_to: str
+    status: str
+    message: str

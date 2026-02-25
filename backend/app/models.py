@@ -19,6 +19,11 @@ class SessionStatus(enum.Enum):
     FAILED = "FAILED"
 
 
+class TransferType(enum.Enum):
+    WARM = "WARM"
+    COLD = "COLD"
+
+
 class TranscriptSpeaker(enum.Enum):
     USER = "USER"
     AGENT = "AGENT"
@@ -75,6 +80,9 @@ class VoiceSession(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Duration in seconds
     session_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    transferred_to: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    transfer_type: Mapped[TransferType | None] = mapped_column(Enum(TransferType), nullable=True)
+    transfer_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

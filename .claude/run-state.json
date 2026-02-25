@@ -1,10 +1,29 @@
 {
-  "ticket": null,
-  "status": "idle",
-  "completed": [],
+  "ticket": "WS-7a",
+  "status": "agents_working",
+  "completed": [
+    "Updated api-contracts.md with transfer endpoint contract",
+    "Added TransferType enum to models.py",
+    "Added transferred_to, transfer_type, transfer_timestamp columns to VoiceSession",
+    "Created Alembic migration for transfer columns",
+    "Added TransferRequest/TransferResponse Pydantic schemas",
+    "Updated VoiceSessionResponse with transfer fields",
+    "Created call_transfer.py service (cold + warm transfer via LiveKit SIP)",
+    "Added POST /api/sessions/{id}/transfer endpoint",
+    "Added livekit_sip_trunk_id to Settings config",
+    "E.164 validation, failure handling, duplicate transfer prevention"
+  ],
   "in_progress": [],
-  "pending": [],
-  "decisions": [],
+  "pending": [
+    "Run Alembic migration against live DB"
+  ],
+  "decisions": [
+    "Cold transfer uses LiveKit TransferSIPParticipant API (native SIP REFER) + remove agent",
+    "Warm transfer uses CreateSIPParticipant to add target to room as three-way call",
+    "E.164 validated via regex (+ followed by 1-15 digits)",
+    "Transfer failures return 502 Bad Gateway with descriptive error message",
+    "Duplicate transfers blocked (session can only be transferred once)"
+  ],
   "blockers": [],
-  "last_updated": null
+  "last_updated": "2026-02-25T12:00:00Z"
 }

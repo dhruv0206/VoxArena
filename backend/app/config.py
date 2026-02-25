@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_sip_domain: str = ""  # e.g. voxarena.sip.livekit.cloud
 
+    # LiveKit SIP
+    livekit_sip_trunk_id: str = ""  # Outbound SIP trunk ID for call transfers
+
     # Server
     port: int = 8000
     debug: bool = True
