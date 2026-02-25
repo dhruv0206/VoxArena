@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WebhookConfig, WebhookConfigState } from "./webhook-config";
+import { FunctionConfig, FunctionDefinition } from "./function-config";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -86,6 +87,7 @@ interface Agent {
         voice_id?: string;
         template?: string;
         webhooks?: WebhookConfigState;
+        functions?: FunctionDefinition[];
     };
 }
 
@@ -231,6 +233,11 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
         agent.config?.webhooks || DEFAULT_WEBHOOK_CONFIG
     );
 
+    // Functions state
+    const [functions, setFunctions] = useState<FunctionDefinition[]>(
+        agent.config?.functions || []
+    );
+
     // Phone number state
     const [phoneNumber, setPhoneNumber] = useState(agent.phone_number || "");
     const [assignPhone, setAssignPhone] = useState("");
@@ -342,6 +349,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                             stt_provider: sttProvider,
                             voice_id: voiceId,
                             webhooks: webhookConfig,
+                            functions,
                         },
                     }),
                 }
@@ -358,7 +366,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
         } finally {
             setIsSaving(false);
         }
-    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, sttProvider, voiceId, webhookConfig]);
+    }, [agent.id, agent.config, userId, name, systemPrompt, firstMessage, firstMessageMode, llmModel, sttProvider, voiceId, webhookConfig, functions]);
 
     const handleTestCall = () => {
         // Navigate to preview page (could pass agent ID in future)
@@ -440,7 +448,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                     <TabsTrigger value="model">Model</TabsTrigger>
                     <TabsTrigger value="voice">Voice</TabsTrigger>
                     <TabsTrigger value="transcriber">Transcriber</TabsTrigger>
-                    <TabsTrigger value="tools">Tools</TabsTrigger>
+                    <TabsTrigger value="tools">Functions</TabsTrigger>
                     <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
                     <TabsTrigger value="phone">Phone</TabsTrigger>
                     <TabsTrigger value="analysis">Analysis</TabsTrigger>
@@ -703,19 +711,9 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                     </Card>
                 </TabsContent>
 
-                {/* Tools Tab */}
+                {/* Functions Tab */}
                 <TabsContent value="tools" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Tools</CardTitle>
-                            <CardDescription>Configure function calling and tools for the assistant.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground">
-                                Tool configuration coming soon. This will allow you to define custom functions the assistant can call.
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <FunctionConfig functions={functions} onChange={setFunctions} />
                 </TabsContent>
 
                 {/* Webhooks Tab */}
