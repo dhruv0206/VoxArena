@@ -72,13 +72,15 @@ type SortField = "total_cost" | "calls" | "avg_cost_per_call" | "agent_name"
 type SortDir = "asc" | "desc"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function fmtCost(v: number): string {
-    return `$${v.toFixed(4)}`
+function fmtCost(v: number | string): string {
+    const n = Number(v) || 0
+    return `$${n.toFixed(4)}`
 }
 
-function fmtCostShort(v: number): string {
-    if (v >= 1) return `$${v.toFixed(2)}`
-    return `$${v.toFixed(4)}`
+function fmtCostShort(v: number | string): string {
+    const n = Number(v) || 0
+    if (n >= 1) return `$${n.toFixed(2)}`
+    return `$${n.toFixed(4)}`
 }
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
@@ -446,7 +448,7 @@ export default function CostsClient({ userId, apiUrl }: CostsClientProps) {
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                                     <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={(v: number) => `$${v.toFixed(2)}`} />
+                                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={(v: number | string) => `$${(Number(v) || 0).toFixed(2)}`} />
                                     <ChartTooltip
                                         content={<ChartTooltipContent
                                             formatter={(value) => fmtCost(value as number)}

@@ -1,7 +1,7 @@
 """add_cost_tracking
 
 Revision ID: c3f8a2b1d4e6
-Revises: a9178a9f9a7b
+Revises: b3c7e1a2d4f6
 Create Date: 2026-02-25 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'c3f8a2b1d4e6'
-down_revision: Union[str, None] = 'a9178a9f9a7b'
+down_revision: Union[str, None] = 'b3c7e1a2d4f6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
