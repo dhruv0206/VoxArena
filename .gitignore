@@ -109,6 +109,11 @@ htmlcov/
 .claude/plugins/
 
 # ===================
+# Project Internal Docs
+# ===================
+VISION.md
+
+# ===================
 # Misc
 # ===================
 *.bak

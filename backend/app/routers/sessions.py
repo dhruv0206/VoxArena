@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
 
+from decimal import Decimal
+
 from app.database import get_db
-from app.models import VoiceSession, User, Transcript, SessionStatus
+from app.models import VoiceSession, UsageEvent, User, Transcript, SessionStatus
 from app.schemas import (
     VoiceSessionCreate,
     VoiceSessionUpdate,
@@ -12,8 +14,11 @@ from app.schemas import (
     TranscriptCreate,
     TranscriptCreateByRoom,
     TranscriptResponse,
+    SessionCostBreakdownResponse,
+    UsageEventResponse,
 )
 from app.services.call_analysis import analyze_call
+from app.services.cost_aggregation import aggregate_session_cost
 
 router = APIRouter()
 
@@ -133,6 +138,35 @@ async def get_session_analysis(session_id: str, db: Session = Depends(get_db)):
 
     analysis = (session.session_data or {}).get("analysis")
     return analysis
+
+
+@router.get("/{session_id}/cost-breakdown", response_model=SessionCostBreakdownResponse)
+async def get_session_cost_breakdown(session_id: str, db: Session = Depends(get_db)):
+    """Get cost breakdown for a session."""
+    session = db.query(VoiceSession).filter(VoiceSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    events = (
+        db.query(UsageEvent)
+        .filter(UsageEvent.session_id == session_id)
+        .order_by(UsageEvent.created_at.asc())
+        .all()
+    )
+
+    cost_by_type: dict[str, Decimal] = {}
+    for event in events:
+        key = event.event_type.value
+        cost_by_type[key] = cost_by_type.get(key, Decimal("0")) + event.total_cost
+
+    total_cost = session.total_cost if session.total_cost is not None else sum(cost_by_type.values())
+
+    return SessionCostBreakdownResponse(
+        session_id=session_id,
+        total_cost=total_cost,
+        events=[UsageEventResponse.model_validate(e) for e in events],
+        cost_by_type=cost_by_type,
+    )
 
 
 @router.post("/", response_model=VoiceSessionResponse, status_code=201)
@@ -255,8 +289,9 @@ async def end_session_by_room(
         db.commit()
         db.refresh(session)
 
-        # Trigger post-call analysis in background (non-blocking)
+        # Trigger post-call analysis and cost aggregation in background (non-blocking)
         background_tasks.add_task(analyze_call, session.id)
+        background_tasks.add_task(aggregate_session_cost, session.id)
 
     return session
 
