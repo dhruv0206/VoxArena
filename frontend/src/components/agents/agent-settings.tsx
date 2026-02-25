@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WebhookConfig, WebhookConfigState } from "./webhook-config";
 import { FunctionConfig, FunctionDefinition } from "./function-config";
+import { OutboundCallModal } from "./outbound-call-modal";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -65,6 +66,14 @@ function PhoneIcon({ className }: { className?: string }) {
     return (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        </svg>
+    );
+}
+
+function PhoneOutgoingIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 3.75v4.5m0-4.5h-4.5m4.5 0l-6 6m3 2.25c0 8.284-6.716 15-15 15h-2.25a2.25 2.25 0 01-2.25-2.25v-1.372c0-.516.351-.966.852-1.091l4.423-1.106c.44-.11.902.055 1.173.417l.97 1.293c.282.376.769.542 1.21.38a12.035 12.035 0 007.143-7.143c.162-.441-.004-.928-.38-1.21l-1.293-.97a1.125 1.125 0 01-.417-1.173l1.106-4.423c.125-.501.575-.852 1.091-.852H21.75A2.25 2.25 0 0124 4.5v2.25z" />
         </svg>
     );
 }
@@ -152,6 +161,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
     const [isTestingCall, setIsTestingCall] = useState(false);
+    const [isOutboundCallOpen, setIsOutboundCallOpen] = useState(false);
 
     // Form state
     const [name, setName] = useState(agent.name);
@@ -425,6 +435,10 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <Button variant="outline" className="gap-2" onClick={() => setIsOutboundCallOpen(true)}>
+                        <PhoneOutgoingIcon className="h-4 w-4" />
+                        Make a Call
+                    </Button>
                     <Button variant="outline" className="gap-2" onClick={() => { }}>
                         <CodeIcon className="h-4 w-4" />
                         Code
@@ -869,6 +883,15 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Outbound Call Modal */}
+            <OutboundCallModal
+                open={isOutboundCallOpen}
+                onOpenChange={setIsOutboundCallOpen}
+                agentId={agent.id}
+                agentName={name}
+                userId={userId}
+            />
         </div>
     );
 }
