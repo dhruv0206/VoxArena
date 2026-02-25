@@ -36,6 +36,32 @@ GET /api/dashboard/metrics → {
   transcriptsToday
 }
 
+### Costs
+GET /api/dashboard/costs/summary?start_date=&end_date= → {
+  total_cost: number,
+  this_month_cost: number,
+  avg_cost_per_call: number,
+  total_calls: number
+}
+
+GET /api/dashboard/costs/by-provider?start_date=&end_date= → {
+  providers: Array<{ provider: string, cost: number, calls: number }>
+}
+
+GET /api/dashboard/costs/timeline?start_date=&end_date=&granularity=daily|weekly|monthly → {
+  timeline: Array<{ date: string, costs: Record<string, number>, total: number }>
+}
+
+GET /api/dashboard/costs/by-agent?start_date=&end_date=&sort_by=total_cost|calls|avg_cost&sort_dir=asc|desc → {
+  agents: Array<{ agent_id: string, agent_name: string, calls: number, total_cost: number, avg_cost_per_call: number }>
+}
+
+GET /api/sessions/:id/costs → {
+  session_id: string,
+  total_cost: number,
+  breakdown: Array<{ provider: string, service: string, units: number, unit_label: string, cost: number }>
+}
+
 ## Rules
 - Change an endpoint → update this file first
 - Frontend must match these shapes exactly
