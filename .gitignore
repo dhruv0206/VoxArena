@@ -102,6 +102,13 @@ htmlcov/
 .ruff_cache/
 
 # ===================
+# Claude Code
+# ===================
+.claude/settings.local.json
+.claude/worktrees/
+.claude/plugins/
+
+# ===================
 # Misc
 # ===================
 *.bak

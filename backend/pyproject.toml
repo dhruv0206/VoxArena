@@ -22,6 +22,11 @@ dependencies = [
 dev = [
     "black>=24.0.0",
     "ruff>=0.8.0",
+    "bandit>=1.8.0",
+    "pip-audit>=2.7.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.28.0"
 ]
 
 [tool.setuptools.packages.find]

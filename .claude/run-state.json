@@ -1,0 +1,10 @@
+{
+  "ticket": null,
+  "status": "idle",
+  "completed": [],
+  "in_progress": [],
+  "pending": [],
+  "decisions": [],
+  "blockers": [],
+  "last_updated": null
+}
