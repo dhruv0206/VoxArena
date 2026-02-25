@@ -7,6 +7,7 @@ A LiveKit-based voice agent using:
 - Resemble AI for Text-to-Speech
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -14,7 +15,7 @@ import os
 import httpx
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import Agent, AgentServer, AgentSession
+from livekit.agents import Agent, AgentServer, AgentSession, RunContext, function_tool
 
 from livekit.plugins import assemblyai, deepgram, google, silero
 
@@ -127,12 +128,126 @@ async def end_backend_session(room_name: str):
         logger.error(f"Error ending backend session: {e}")
 
 
+def create_function_tools(functions_config: list[dict], room_name: str) -> list:
+    """Build dynamic LiveKit function tools from agent config.functions array.
+
+    Each function config defines a name, description, JSON Schema parameters,
+    and an HTTP endpoint to call when the LLM invokes the tool.
+    """
+    tools = []
+    for func_config in functions_config:
+        name = func_config.get("name")
+        description = func_config.get("description", "")
+        parameters = func_config.get("parameters", {"type": "object", "properties": {}})
+        endpoint = func_config.get("endpoint", {})
+        speak_during_execution = func_config.get("speak_during_execution", False)
+        speak_on_send = func_config.get("speak_on_send", "")
+
+        if not name:
+            logger.warning("Skipping function with no name")
+            continue
+
+        raw_schema = {
+            "type": "function",
+            "name": name,
+            "description": description,
+            "parameters": parameters,
+        }
+
+        # Capture config in closure defaults to avoid late-binding issues
+        def _make_handler(
+            _endpoint=endpoint,
+            _name=name,
+            _speak_during_execution=speak_during_execution,
+            _speak_on_send=speak_on_send,
+            _room_name=room_name,
+        ):
+            async def handler(raw_arguments: dict[str, object], context: RunContext):
+                logger.info(f"Function call: {_name}({json.dumps(raw_arguments)})")
+
+                # Say filler phrase while executing if configured
+                if _speak_during_execution and _speak_on_send:
+                    session = context.session
+                    if session:
+                        await session.say(_speak_on_send)
+
+                # Make HTTP request to the configured endpoint
+                url = _endpoint.get("url", "")
+                method = _endpoint.get("method", "POST").upper()
+                header_list = _endpoint.get("headers", [])
+                timeout = _endpoint.get("timeout", 10)
+
+                header_dict = {}
+                for h in header_list:
+                    key = h.get("key", "")
+                    value = h.get("value", "")
+                    if key:
+                        header_dict[key] = value
+
+                result_text = ""
+                try:
+                    async with httpx.AsyncClient() as client:
+                        if method in ("POST", "PUT", "PATCH"):
+                            response = await client.request(
+                                method=method,
+                                url=url,
+                                json=raw_arguments,
+                                headers=header_dict,
+                                timeout=timeout,
+                            )
+                        else:  # GET, DELETE — send args as query params
+                            response = await client.request(
+                                method=method,
+                                url=url,
+                                params={k: str(v) for k, v in raw_arguments.items()},
+                                headers=header_dict,
+                                timeout=timeout,
+                            )
+
+                        response.raise_for_status()
+
+                        content_type = response.headers.get("content-type", "")
+                        if "application/json" in content_type:
+                            result_data = response.json()
+                            result_text = json.dumps(result_data)
+                        else:
+                            result_text = response.text
+
+                except httpx.TimeoutException:
+                    result_text = f"Error: Request to {_name} timed out after {timeout}s"
+                    logger.error(f"Function {_name} timed out: {url}")
+                except httpx.HTTPStatusError as e:
+                    result_text = f"Error: {_name} returned HTTP {e.response.status_code}"
+                    logger.error(f"Function {_name} HTTP error: {e}")
+                except Exception as e:
+                    result_text = f"Error: {_name} failed — {str(e)}"
+                    logger.error(f"Function {_name} error: {e}")
+
+                # Log function call to transcript
+                args_str = json.dumps(raw_arguments)
+                log_content = f"[Function: {_name}({args_str})] → {result_text}"
+                asyncio.create_task(
+                    save_transcript_to_backend(_room_name, log_content, "AGENT")
+                )
+
+                return result_text
+
+            return handler
+
+        tool = function_tool(_make_handler(), raw_schema=raw_schema)
+        tools.append(tool)
+        logger.info(f"Registered function tool: {name}")
+
+    return tools
+
+
 class VoiceAssistant(Agent):
     """Custom voice assistant agent."""
-    
-    def __init__(self, instructions: str = DEFAULT_INSTRUCTIONS) -> None:
+
+    def __init__(self, instructions: str = DEFAULT_INSTRUCTIONS, tools=None) -> None:
         super().__init__(
             instructions=instructions,
+            tools=tools or [],
         )
 
 
@@ -309,7 +424,6 @@ async def entrypoint(ctx: agents.JobContext):
         if not text:
             text = transcript.get("transcript", transcript.get("text", "")) if isinstance(transcript, dict) else ""
         if text and text.strip():
-            import asyncio
             asyncio.create_task(save_transcript_to_backend(ctx.room.name, text.strip(), "USER"))
     
     # Save agent speech transcripts via conversation_item_added (role='assistant')
@@ -337,14 +451,22 @@ async def entrypoint(ctx: agents.JobContext):
         else:
             text = str(content).strip() if content else ""
         if text:
-            import asyncio
             asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "AGENT"))
     
-    # Start the session with the configured system prompt
+    # --- FUNCTION TOOLS ---
+    # Build dynamic tools from agent config.functions array
+    function_tools = []
+    if agent_config:
+        functions_config = agent_config.get("config", {}).get("functions", [])
+        if functions_config:
+            function_tools = create_function_tools(functions_config, ctx.room.name)
+            logger.info(f"Registered {len(function_tools)} function tool(s)")
+
+    # Start the session with the configured system prompt and tools
     logger.info(f"Starting session with system_prompt ({len(system_prompt)} chars), first_message_mode={first_message_mode}")
     await session.start(
         room=ctx.room,
-        agent=VoiceAssistant(instructions=system_prompt),
+        agent=VoiceAssistant(instructions=system_prompt, tools=function_tools),
     )
     
     # Generate initial greeting only if mode is assistant_speaks_first
