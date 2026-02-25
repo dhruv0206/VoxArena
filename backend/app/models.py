@@ -19,6 +19,19 @@ class SessionStatus(enum.Enum):
     FAILED = "FAILED"
 
 
+class CallDirection(enum.Enum):
+    INBOUND = "INBOUND"
+    OUTBOUND = "OUTBOUND"
+
+
+class CallStatus(enum.Enum):
+    RINGING = "RINGING"
+    ANSWERED = "ANSWERED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    NO_ANSWER = "NO_ANSWER"
+
+
 class TranscriptSpeaker(enum.Enum):
     USER = "USER"
     AGENT = "AGENT"
@@ -74,6 +87,12 @@ class VoiceSession(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Duration in seconds
+    call_direction: Mapped[CallDirection | None] = mapped_column(
+        Enum(CallDirection), nullable=True
+    )
+    outbound_phone_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    call_status: Mapped[CallStatus | None] = mapped_column(Enum(CallStatus), nullable=True)
+    callback_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     session_data: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

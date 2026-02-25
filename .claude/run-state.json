@@ -1,10 +1,25 @@
 {
-  "ticket": null,
-  "status": "idle",
-  "completed": [],
+  "ticket": "WS-6a",
+  "status": "done",
+  "completed": [
+    "Added CallDirection and CallStatus enums to models.py",
+    "Added call_direction, outbound_phone_number, call_status, callback_url columns to voice_sessions",
+    "Created Alembic migration 20260225_120000_add_outbound_call_fields",
+    "Created POST /api/calls/outbound endpoint",
+    "Created GET /api/calls/{id}/status endpoint",
+    "Implemented 60s no-answer timeout via background task",
+    "Updated api-contracts.md with new endpoint shapes",
+    "Updated schemas.py with OutboundCallRequest/Response and CallStatusResponse",
+    "Registered calls router in main.py",
+    "Wrote and ran verification script — 57/57 passed"
+  ],
   "in_progress": [],
   "pending": [],
-  "decisions": [],
+  "decisions": [
+    "Used asyncio.sleep-based background task for 60s timeout rather than external scheduler",
+    "Outbound calls require x-user-id header for auth (consistent with other endpoints)",
+    "SIP trunk ID sourced from twilio_sip_domain setting"
+  ],
   "blockers": [],
-  "last_updated": null
+  "last_updated": "2026-02-25T12:30:00Z"
 }

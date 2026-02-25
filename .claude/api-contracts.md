@@ -36,6 +36,23 @@ GET /api/dashboard/metrics → {
   transcriptsToday
 }
 
+### Outbound Calls
+POST /api/calls/outbound   → OutboundCallResponse
+Body: { agent_id, phone_number (E.164), callback_url? }
+Headers: x-user-id (Clerk ID)
+
+OutboundCallResponse: { call_id, room_name, status }
+
+GET /api/calls/:id/status  → CallStatusResponse
+
+CallStatusResponse: { call_id, status, call_status, call_direction,
+                      outbound_phone_number, room_name, started_at,
+                      ended_at, duration }
+
+Session (updated): { ..., call_direction?: "INBOUND"|"OUTBOUND",
+                     outbound_phone_number?: string,
+                     call_status?: "RINGING"|"ANSWERED"|"COMPLETED"|"FAILED"|"NO_ANSWER" }
+
 ## Rules
 - Change an endpoint → update this file first
 - Frontend must match these shapes exactly
