@@ -18,6 +18,7 @@ export interface VoiceSession {
   agent_id: string | null;
   agent_name?: string | null;
   analysis?: CallAnalysis | null;
+  direction?: "inbound" | "outbound" | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

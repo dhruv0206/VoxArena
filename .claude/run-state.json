@@ -1,10 +1,22 @@
 {
-  "ticket": null,
-  "status": "idle",
-  "completed": [],
-  "in_progress": [],
+  "ticket": "WS-6b",
+  "status": "verifying",
+  "completed": [
+    "Updated api-contracts.md with outbound call endpoints and session direction",
+    "Created outbound-call-modal.tsx with phone number input, country code selector, E.164 validation, call-in-progress view, status polling, duration timer, and end call",
+    "Added Make a Call button to agent detail page action bar",
+    "Added outbound/inbound direction filter to call logs page",
+    "Added direction badge to call log entries",
+    "Updated VoiceSession type with direction field"
+  ],
+  "in_progress": ["Final verification of acceptance criteria"],
   "pending": [],
-  "decisions": [],
+  "decisions": [
+    "Used polling (2s interval) for real-time call status updates since no WebSocket infrastructure exists",
+    "Country code selector uses Select component with 20 common country codes",
+    "Direction filter uses pill-style buttons matching existing voice language filter pattern",
+    "Modal prevents closing during active calls for safety"
+  ],
   "blockers": [],
-  "last_updated": null
+  "last_updated": "2026-02-25T00:00:00Z"
 }

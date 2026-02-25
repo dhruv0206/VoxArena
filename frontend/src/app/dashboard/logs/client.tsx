@@ -48,6 +48,22 @@ function ChevronRightIcon({ className }: { className?: string }) {
     );
 }
 
+function ArrowUpRightIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+        </svg>
+    );
+}
+
+function ArrowDownLeftIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+        </svg>
+    );
+}
+
 function resolveSessionLabel(session: { agent_name?: string | null; room_name: string }): {
     primary: string
     secondary: string
@@ -86,6 +102,7 @@ interface Session {
     created_at: string;
     agent_name?: string;
     analysis?: SessionAnalysis | null;
+    direction?: "inbound" | "outbound" | null;
 }
 
 interface PaginatedResponse {
@@ -106,6 +123,7 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
     const [limit] = useState(10);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [directionFilter, setDirectionFilter] = useState<"all" | "inbound" | "outbound">("all");
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchSessions = useCallback(async () => {
@@ -121,6 +139,7 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
             if (startDate) params.append("start_date", startDate + ":00.000Z");
             // Add 59 seconds to end date to include the full minute (12:00 AM includes 12:00:59)
             if (endDate) params.append("end_date", endDate + ":59.999Z");
+            if (directionFilter !== "all") params.append("direction", directionFilter);
 
             const response = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/sessions/?${params}`,
@@ -139,7 +158,7 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
         } finally {
             setIsLoading(false);
         }
-    }, [userId, page, limit, startDate, endDate]);
+    }, [userId, page, limit, startDate, endDate, directionFilter]);
 
     useEffect(() => {
         fetchSessions();
@@ -155,6 +174,7 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
     const clearFilters = () => {
         setStartDate("");
         setEndDate("");
+        setDirectionFilter("all");
         setPage(1);
     };
 
@@ -169,9 +189,33 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
             {/* Filters */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-sm">Filter by Date</CardTitle>
+                    <CardTitle className="text-sm">Filters</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    {/* Direction filter */}
+                    <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Direction</Label>
+                        <div className="flex gap-1.5">
+                            {(["all", "inbound", "outbound"] as const).map((dir) => (
+                                <button
+                                    key={dir}
+                                    type="button"
+                                    onClick={() => { setDirectionFilter(dir); setPage(1); }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                                        directionFilter === dir
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    }`}
+                                >
+                                    {dir === "inbound" && <ArrowDownLeftIcon className="h-3 w-3" />}
+                                    {dir === "outbound" && <ArrowUpRightIcon className="h-3 w-3" />}
+                                    {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Date filter */}
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="space-y-2">
                             <Label htmlFor="start-date">From</Label>
@@ -196,7 +240,7 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                         <Button onClick={handleDateFilter} size="sm">
                             Apply Filter
                         </Button>
-                        {(startDate || endDate) && (
+                        {(startDate || endDate || directionFilter !== "all") && (
                             <Button onClick={clearFilters} variant="outline" size="sm">
                                 Clear
                             </Button>
@@ -279,6 +323,16 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                                                 <ClockIcon className="h-4 w-4" />
                                                 {formatDuration(session.duration)}
                                             </div>
+                                            {session.direction && (
+                                                <Badge variant="outline" className="gap-1 text-xs">
+                                                    {session.direction === "outbound" ? (
+                                                        <ArrowUpRightIcon className="h-3 w-3" />
+                                                    ) : (
+                                                        <ArrowDownLeftIcon className="h-3 w-3" />
+                                                    )}
+                                                    {session.direction}
+                                                </Badge>
+                                            )}
                                             <Badge
                                                 variant={
                                                     session.status === "COMPLETED" ? "secondary" :

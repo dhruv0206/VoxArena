@@ -18,12 +18,24 @@ Agent: { id, name, systemPrompt, sttProvider,
 
 ### Sessions
 GET /api/sessions         → { sessions: Session[], total: number }
+  Query params: page, limit, start_date, end_date, direction (inbound|outbound)
 GET /api/sessions/:id     → Session
 GET /api/sessions/:id/analysis → CallAnalysis | null
 
-Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis? }
+Session: { id, agentId, startedAt, endedAt, transcript, duration, analysis?, direction? }
 
 CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_items }
+
+### Outbound Calls
+POST /api/telephony/outbound/call → { call_id, status }
+  Body: { agent_id, phone_number }
+  Initiates an outbound call from the agent to the given phone number.
+
+GET  /api/telephony/outbound/call/:call_id/status → { call_id, status, duration, phone_number }
+  Returns current call status: ringing | answered | completed | failed
+
+POST /api/telephony/outbound/call/:call_id/end → { success: boolean }
+  Ends an active outbound call.
 
 ### LiveKit
 POST /api/livekit/token   → { token: string, roomName: string }
