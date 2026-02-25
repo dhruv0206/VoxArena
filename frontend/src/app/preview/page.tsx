@@ -73,6 +73,7 @@ function SparklesIcon({ className }: { className?: string }) {
 const sttModels = [
     { id: "deepgram", name: "Deepgram Nova-2", provider: "Deepgram" },
     { id: "assemblyai", name: "AssemblyAI", provider: "AssemblyAI" },
+    { id: "elevenlabs", name: "ElevenLabs", provider: "ElevenLabs" },
 ];
 
 const llmModels = [
@@ -695,8 +696,8 @@ export default function PreviewPage() {
                         <div className="rounded-lg border bg-muted/50 p-3">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Current Pipeline</p>
                             <div className="flex items-center gap-1 text-xs">
-                                <Badge variant="outline" className={`text-[10px] ${selectedStt === 'assemblyai' ? 'border-blue-500/50 text-blue-400' : 'border-orange-500/50 text-orange-400'}`}>
-                                    {selectedStt === 'assemblyai' ? 'AssemblyAI' : 'Deepgram'}
+                                <Badge variant="outline" className={`text-[10px] ${selectedStt === 'assemblyai' ? 'border-blue-500/50 text-blue-400' : selectedStt === 'elevenlabs' ? 'border-purple-500/50 text-purple-400' : 'border-orange-500/50 text-orange-400'}`}>
+                                    {selectedStt === 'assemblyai' ? 'AssemblyAI' : selectedStt === 'elevenlabs' ? 'ElevenLabs' : 'Deepgram'}
                                 </Badge>
                                 <span className="text-white/30">→</span>
                                 <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-400">Gemini</Badge>
