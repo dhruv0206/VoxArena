@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CallAnalysis } from "@/lib/api";
+import { TransferControls } from "@/components/sessions/transfer-controls";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -126,7 +127,7 @@ export default async function CallDetailsPage({
                             <ArrowLeftIcon className="h-5 w-5" />
                         </Button>
                     </Link>
-                    <div>
+                    <div className="flex-1">
                         <h1 className="text-2xl font-bold">Call Details</h1>
                         <p className="text-muted-foreground">
                             {session.agent_name
@@ -136,6 +137,9 @@ export default async function CallDetailsPage({
                         </p>
                     </div>
                 </div>
+
+                {/* Transfer Controls */}
+                <TransferControls sessionId={session.id} sessionStatus={session.status} />
 
                 {/* Session Info */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

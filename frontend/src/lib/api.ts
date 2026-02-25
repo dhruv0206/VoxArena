@@ -30,6 +30,27 @@ export interface SessionsPage {
   limit: number;
 }
 
+export type TransferType = "warm" | "cold";
+
+export type TransferStatus =
+  | "initiating"
+  | "ringing"
+  | "connected"
+  | "completed"
+  | "failed";
+
+export interface Transfer {
+  id: string;
+  session_id: string;
+  phone_number: string;
+  transfer_type: TransferType;
+  status: TransferStatus;
+  initiated_at: string;
+  connected_at: string | null;
+  completed_at: string | null;
+  initiated_by: string;
+}
+
 export interface Agent {
   id: string;
   name: string;

@@ -29,6 +29,18 @@ CallAnalysis: { summary, sentiment, sentiment_score, topics, outcome, action_ite
 POST /api/livekit/token   → { token: string, roomName: string }
 Body: { agentId, roomName }
 
+### Transfers
+POST /api/sessions/:id/transfer → Transfer
+Body: { phone_number: string, transfer_type: "warm" | "cold" }
+
+GET  /api/sessions/:id/transfers → Transfer[]
+
+Transfer: { id, session_id, phone_number, transfer_type,
+            status, initiated_at, connected_at, completed_at,
+            initiated_by }
+
+Transfer.status: "initiating" | "ringing" | "connected" | "completed" | "failed"
+
 ### Dashboard
 GET /api/dashboard/metrics → {
   totalSessions, totalAgents,
