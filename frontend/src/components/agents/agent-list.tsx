@@ -137,9 +137,10 @@ export function AgentList({ initialAgents, userId }: AgentListProps) {
             try {
                 const res = await fetch(`${apiUrl}/resemble/voices`);
                 if (!res.ok) throw new Error("Failed to fetch voices");
-                const data: ResembleVoice[] = await res.json();
-                setResembleVoices(data);
-                if (data.length > 0) setSelectedVoice(data[0].id);
+                const data: { voices: ResembleVoice[] } = await res.json();
+                const voices = data.voices ?? [];
+                setResembleVoices(voices);
+                if (voices.length > 0) setSelectedVoice(voices[0].id);
             } catch (e) {
                 console.error("Could not load voices:", e);
                 setResembleVoices([]);

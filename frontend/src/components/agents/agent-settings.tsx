@@ -118,6 +118,14 @@ interface ResembleVoice {
     voice_type?: string;
 }
 
+interface ResembleVoicesPage {
+    voices: ResembleVoice[];
+    page: number;
+    page_size: number;
+    total_pages: number;
+    total_count: number;
+}
+
 const DEFAULT_WEBHOOK_CONFIG: WebhookConfigState = {
     pre_call: {
         enabled: false,
@@ -153,32 +161,69 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
     const [voiceId, setVoiceId] = useState(agent.config?.voice_id || "");
+    const [selectedVoiceName, setSelectedVoiceName] = useState<string>("");
     const [resembleVoices, setResembleVoices] = useState<ResembleVoice[]>([]);
     const [isLoadingVoices, setIsLoadingVoices] = useState(true);
-    const [voicePage, setVoicePage] = useState(0);
-    const VOICES_PER_PAGE = 10;
+    const [voicePage, setVoicePage] = useState(1);
+    const [voiceTotalPages, setVoiceTotalPages] = useState(1);
+    const [voiceTotalCount, setVoiceTotalCount] = useState(0);
+    const [voiceLanguage, setVoiceLanguage] = useState<string>(""); // "" = All
+    const [allLanguages, setAllLanguages] = useState<string[]>([]);
+    const VOICES_PER_PAGE = 12;
+
+    // Resolve saved voice name immediately on mount
+    useEffect(() => {
+        if (!agent.config?.voice_id) return;
+        fetch(`${apiUrl}/resemble/voices/${agent.config.voice_id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then((v: ResembleVoice | null) => { if (v) setSelectedVoiceName(v.name); })
+            .catch(() => { });
+    }, [apiUrl, agent.config?.voice_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Fetch distinct language list once on mount
+    useEffect(() => {
+        fetch(`${apiUrl}/resemble/voices/languages`)
+            .then(r => r.ok ? r.json() : [])
+            .then((langs: string[]) => setAllLanguages(langs))
+            .catch(() => { });
+    }, [apiUrl]);
+
+    const fetchVoices = useCallback(async (page: number, lang: string) => {
+        setIsLoadingVoices(true);
+        try {
+            const params = new URLSearchParams({ page: String(page), page_size: String(VOICES_PER_PAGE) });
+            if (lang) params.set("language", lang);
+            const res = await fetch(`${apiUrl}/resemble/voices?${params}`);
+            if (!res.ok) throw new Error("Failed to fetch voices");
+            const data: ResembleVoicesPage = await res.json();
+            setResembleVoices(data.voices);
+            setVoiceTotalPages(data.total_pages);
+            setVoiceTotalCount(data.total_count);
+            if (!agent.config?.voice_id && page === 1 && data.voices.length > 0) {
+                setVoiceId(data.voices[0].id);
+                setSelectedVoiceName(data.voices[0].name);
+            }
+            // Resolve name for existing saved voice if not yet set
+            if (agent.config?.voice_id && !selectedVoiceName) {
+                const match = data.voices.find(v => v.id === agent.config?.voice_id);
+                if (match) setSelectedVoiceName(match.name);
+            }
+        } catch (e) {
+            console.error("Could not load Resemble voices:", e);
+        } finally {
+            setIsLoadingVoices(false);
+        }
+    }, [apiUrl, agent.config?.voice_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        const fetchVoices = async () => {
-            try {
-                const res = await fetch(`${apiUrl}/resemble/voices`);
-                if (!res.ok) throw new Error("Failed to fetch voices");
-                const data: ResembleVoice[] = await res.json();
-                setResembleVoices(data);
-                // If no voice saved yet, pre-select the first one
-                if (!agent.config?.voice_id && data.length > 0) {
-                    setVoiceId(data[0].id);
-                }
-                setVoicePage(0);
-            } catch (e) {
-                console.error("Could not load Resemble voices:", e);
-            } finally {
-                setIsLoadingVoices(false);
-            }
-        };
-        fetchVoices();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [apiUrl]);
+        fetchVoices(voicePage, voiceLanguage);
+    }, [voicePage, voiceLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleLanguageFilter = (lang: string) => {
+        setVoiceLanguage(lang);
+        setVoicePage(1);
+    };
+
 
     // Webhook state
     const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>(
@@ -509,33 +554,48 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                                     </Select>
                                 </div>
 
-                                {/* Voice Selector */}
-                                <div className="space-y-2">
-                                    <Label>Voice</Label>
-                                    <Select value={voiceId} onValueChange={setVoiceId} disabled={isLoadingVoices}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={isLoadingVoices ? "Loading voices..." : "Select a voice"} />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60 overflow-y-auto">
-                                            {resembleVoices.map((voice) => (
-                                                <SelectItem key={voice.id} value={voice.id}>
-                                                    <span className="font-medium">{voice.name}</span>
-                                                    <span className="ml-2 text-muted-foreground text-xs">
-                                                        {voice.language}
-                                                    </span>
-                                                </SelectItem>
-                                            ))}
-                                            {!isLoadingVoices && resembleVoices.length === 0 && (
-                                                <div className="px-2 py-3 text-sm text-muted-foreground">
-                                                    No voices found. Check your RESEMBLE_API_KEY.
-                                                </div>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {/* Currently selected voice */}
+                                {selectedVoiceName && (
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 border border-primary/30 text-sm">
+                                        <span className="text-primary font-medium">Selected:</span>
+                                        <span>{selectedVoiceName}</span>
+                                    </div>
+                                )}
 
-                                {/* Voice Preview Cards — scrollable */}
-                                <div className="overflow-y-auto max-h-[360px] pr-1 rounded-lg border border-border">
+                                {/* Language filter pills */}
+                                {allLanguages.length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Filter by language</Label>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleLanguageFilter("")}
+                                                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${voiceLanguage === ""
+                                                    ? "bg-primary text-primary-foreground border-primary"
+                                                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                    }`}
+                                            >
+                                                All
+                                            </button>
+                                            {allLanguages.map(lang => (
+                                                <button
+                                                    key={lang}
+                                                    type="button"
+                                                    onClick={() => handleLanguageFilter(lang)}
+                                                    className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${voiceLanguage === lang
+                                                        ? "bg-primary text-primary-foreground border-primary"
+                                                        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                        }`}
+                                                >
+                                                    {lang}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Voice Preview Cards — paginated */}
+                                <div className="rounded-lg border border-border overflow-hidden">
                                     {isLoadingVoices ? (
                                         <p className="text-sm text-muted-foreground py-6 text-center">Loading voices...</p>
                                     ) : resembleVoices.length === 0 ? (
@@ -548,7 +608,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                                                 <button
                                                     key={voice.id}
                                                     type="button"
-                                                    onClick={() => setVoiceId(voice.id)}
+                                                    onClick={() => { setVoiceId(voice.id); setSelectedVoiceName(voice.name); }}
                                                     className={`text-left p-3 rounded-lg border transition-colors ${voiceId === voice.id
                                                         ? "border-primary bg-primary/10"
                                                         : "border-border hover:bg-muted/50"
@@ -570,6 +630,33 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
                                                     </div>
                                                 </button>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {/* Pagination controls */}
+                                    {voiceTotalPages > 1 && (
+                                        <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30">
+                                            <span className="text-xs text-muted-foreground">
+                                                Page {voicePage} of {voiceTotalPages} &middot; {voiceTotalCount} voices
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVoicePage(p => Math.max(1, p - 1))}
+                                                    disabled={voicePage <= 1 || isLoadingVoices}
+                                                    className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    ← Prev
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVoicePage(p => Math.min(voiceTotalPages, p + 1))}
+                                                    disabled={voicePage >= voiceTotalPages || isLoadingVoices}
+                                                    className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    Next →
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

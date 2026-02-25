@@ -48,6 +48,22 @@ function ChevronRightIcon({ className }: { className?: string }) {
     );
 }
 
+function resolveSessionLabel(session: { agent_name?: string | null; room_name: string }): {
+    primary: string
+    secondary: string
+} {
+    const room = session.room_name || ''
+    const sipMatch = room.match(/^_?(\+\d{7,15})/)
+    if (session.agent_name) {
+        if (sipMatch) return { primary: session.agent_name, secondary: `SIP via ${sipMatch[1]}` }
+        const shortId = room.replace(/^(preview-|voxarena-)/, '').slice(0, 18)
+        return { primary: session.agent_name, secondary: `ID: ${shortId}` }
+    }
+    if (sipMatch) return { primary: 'SIP Call', secondary: `via ${sipMatch[1]}` }
+    if (room.startsWith('preview-')) return { primary: 'Preview', secondary: room.replace('preview-', '').slice(0, 18) }
+    return { primary: 'Unassigned Call', secondary: room.replace(/^voxarena-/, '').slice(0, 18) }
+}
+
 function formatDuration(seconds: number | null): string {
     if (!seconds) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -217,23 +233,17 @@ export function CallLogsClient({ userId }: CallLogsClientProps) {
                                                 <MicrophoneIcon className="h-5 w-5 text-primary" />
                                             </div>
                                             <div>
-                                                <p className="font-medium">
-                                                    {session.agent_name ? (
-                                                        <>
-                                                            {session.agent_name}
+                                                {(() => {
+                                                    const { primary, secondary } = resolveSessionLabel(session)
+                                                    return (
+                                                        <p className="font-medium">
+                                                            {primary}
                                                             <span className="text-muted-foreground ml-2 font-normal text-sm">
-                                                                — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                                — {secondary}
                                                             </span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            Call
-                                                            <span className="text-muted-foreground ml-2 font-normal text-sm">
-                                                                — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </p>
+                                                        </p>
+                                                    )
+                                                })()}
                                                 <p className="text-sm text-muted-foreground">
                                                     {new Date(session.created_at).toLocaleString()}
                                                 </p>

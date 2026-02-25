@@ -36,7 +36,7 @@ def get_or_create_user(db: Session, clerk_id: str) -> User:
 async def get_sessions(
     x_user_id: Optional[str] = Header(None),
     page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=10000),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     db: Session = Depends(get_db),

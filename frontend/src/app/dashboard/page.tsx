@@ -5,8 +5,27 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import type { VoiceSession, SessionsPage } from "@/lib/api";
+
+// ─── Session label resolver ──────────────────────────────────────────────────
+function resolveSessionLabel(session: { agent_name?: string | null; room_name: string }): {
+    primary: string
+    secondary: string
+} {
+    const room = session.room_name || ''
+    // LiveKit SIP rooms: _+E164PHONE_RANDOMID  (check first regardless of agent assignment)
+    const sipMatch = room.match(/^_?(\+\d{7,15})/)
+    if (session.agent_name) {
+        if (sipMatch) return { primary: session.agent_name, secondary: `SIP via ${sipMatch[1]}` }
+        const shortId = room.replace(/^(preview-|voxarena-)/, '').slice(0, 18)
+        return { primary: session.agent_name, secondary: `ID: ${shortId}` }
+    }
+    if (sipMatch) return { primary: 'SIP Call', secondary: `via ${sipMatch[1]}` }
+    if (room.startsWith('preview-')) return { primary: 'Preview', secondary: room.replace('preview-', '').slice(0, 18) }
+    return { primary: 'Unassigned Call', secondary: room.replace(/^voxarena-/, '').slice(0, 18) }
+}
 
 // Icons
 function MicrophoneIcon({ className }: { className?: string }) {
@@ -54,14 +73,6 @@ function KeyIcon({ className }: { className?: string }) {
     return (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-        </svg>
-    );
-}
-
-function ClockIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
     );
 }
@@ -120,30 +131,14 @@ export default async function DashboardPage() {
 
     const user = await currentUser();
 
-    // Fetch real session data from backend
-    let sessions: any[] = [];
-    let totalCalls = 0;
-    try {
-        const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-        const response = await fetch(`${apiUrl}/sessions/?limit=100`, {
-            headers: {
-                'x-user-id': userId
-            },
-            cache: 'no-store' // Always fetch fresh data
-        });
-        if (response.ok) {
-            const data = await response.json();
-            sessions = data.sessions || [];
-            totalCalls = data.total || sessions.length;
-        }
-    } catch (error) {
-        console.error("Failed to fetch sessions:", error);
-    }
+    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    const headers = { 'x-user-id': userId };
 
-    // Calculate metrics
-    const avgDuration = sessions.length > 0
-        ? Math.round(sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / sessions.length)
-        : 0;
+    // Fetch recent calls server-side for immediate render
+    const recentRes = await fetch(`${apiUrl}/sessions/?limit=5`, { headers, cache: 'no-store' });
+
+    const recentData: SessionsPage | null = recentRes.ok ? await recentRes.json().catch(() => null) : null;
+    const recentSessions: VoiceSession[] = recentData?.sessions ?? [];
 
     const formatDuration = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -270,65 +265,8 @@ export default async function DashboardPage() {
                         <h1 className="text-2xl font-bold">Welcome {user?.firstName || "back"}!</h1>
                     </div>
 
-                    {/* Metrics Header */}
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">Metrics</h2>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">All Agents</Button>
-                            <Button variant="outline" size="sm">Last Month</Button>
-                        </div>
-                    </div>
-
-                    {/* Metrics Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-orange-500">Number of Calls</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold">{totalCalls}</span>
-                                    <span className="text-sm text-muted-foreground">— 0.0%</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-cyan-500">Avg Duration</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold">{formatDuration(avgDuration)}</span>
-                                    <span className="text-sm text-muted-foreground">— 0.0%</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Total Cost</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold">0</span>
-                                    <span className="text-sm text-muted-foreground">credits — 0.0%</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Avg Cost</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold">0</span>
-                                    <span className="text-sm text-muted-foreground">cr/call — 0.0%</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                    {/* Stat Row + Call Volume Chart */}
+                    <DashboardStats userId={userId} />
 
                     {/* Recent Calls */}
                     <Card>
@@ -341,7 +279,7 @@ export default async function DashboardPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {sessions.length === 0 ? (
+                            {recentSessions.length === 0 ? (
                                 <div className="h-48 flex flex-col items-center justify-center text-muted-foreground">
                                     <PhoneIcon className="h-12 w-12 mb-4 opacity-50" />
                                     <p className="font-medium">Oops...</p>
@@ -349,7 +287,7 @@ export default async function DashboardPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {sessions.slice(0, 5).map((session) => (
+                                    {recentSessions.map((session) => (
                                         <Link key={session.id} href={`/dashboard/logs/${session.id}`} className="block">
                                             <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
                                                 <div className="flex items-center gap-3">
@@ -357,23 +295,17 @@ export default async function DashboardPage() {
                                                         <MicrophoneIcon className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-sm">
-                                                            {session.agent_name ? (
-                                                                <>
-                                                                    {session.agent_name}
+                                                        {(() => {
+                                                            const { primary, secondary } = resolveSessionLabel(session)
+                                                            return (
+                                                                <p className="font-medium text-sm">
+                                                                    {primary}
                                                                     <span className="text-muted-foreground ml-1 font-normal">
-                                                                        — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
+                                                                        — {secondary}
                                                                     </span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span className="font-medium">Call</span>
-                                                                    <span className="text-muted-foreground ml-1 font-normal">
-                                                                        — ID: {session.room_name.replace(/^(preview-|voxarena-)/, '')}
-                                                                    </span>
-                                                                </>
-                                                            )}
-                                                        </p>
+                                                                </p>
+                                                            )
+                                                        })()}
                                                         <p className="text-xs text-muted-foreground">
                                                             {new Date(session.created_at).toLocaleString()}
                                                         </p>
@@ -381,7 +313,7 @@ export default async function DashboardPage() {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-sm font-medium">{formatDuration(session.duration || 0)}</p>
-                                                    <Badge variant={session.status === 'completed' ? 'secondary' : 'default'} className="text-[10px] h-4">
+                                                    <Badge variant={session.status === 'COMPLETED' ? 'secondary' : 'default'} className="text-[10px] h-4">
                                                         {session.status}
                                                     </Badge>
                                                 </div>
