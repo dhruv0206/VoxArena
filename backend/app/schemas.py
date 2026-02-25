@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from app.models import AgentType, SessionStatus, TranscriptSpeaker
 
@@ -85,11 +85,25 @@ class VoiceSessionResponse(VoiceSessionBase):
     user_id: str
     agent_id: Optional[str]
     agent_name: Optional[str] = None  # Added for displaying agent name in UI
+    analysis: Optional[dict] = None  # Extracted from session_data["analysis"]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _extract_analysis(cls, data, handler):
+        instance = handler(data)
+        # Extract analysis from session_data when validating from ORM object
+        if hasattr(data, "session_data") and data.session_data:
+            instance.analysis = data.session_data.get("analysis")
+        elif isinstance(data, dict):
+            sd = data.get("session_data") or data.get("metadata") or {}
+            if isinstance(sd, dict):
+                instance.analysis = sd.get("analysis")
+        return instance
 
 
 # Transcript Schemas
