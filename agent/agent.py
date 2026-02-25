@@ -16,10 +16,12 @@ import httpx
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, RunContext, function_tool
+from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 
 from livekit.plugins import assemblyai, deepgram, elevenlabs, google, silero
 
 from resemble_tts import ResembleTTS
+from usage_logger import log_stt_usage, log_llm_usage, log_tts_usage
 
 load_dotenv()
 logger = logging.getLogger("voice-agent")
@@ -401,7 +403,7 @@ async def entrypoint(ctx: agents.JobContext):
         session_user_id = agent_config["user_id"]  # Agent owner's DB UUID for SIP calls
     else:
         session_user_id = "sip-caller"  # Last-resort fallback
-    await create_backend_session(
+    session_id = await create_backend_session(
         room_name=ctx.room.name,
         user_id=session_user_id,
         agent_id=agent_id,
@@ -456,6 +458,41 @@ async def entrypoint(ctx: agents.JobContext):
         if text:
             asyncio.create_task(save_transcript_to_backend(ctx.room.name, text, "AGENT"))
     
+    # --- USAGE METRICS HOOK ---
+    # Log STT / LLM / TTS usage events for cost tracking
+    @session.on("metrics_collected")
+    def on_metrics(metrics):
+        if not session_id:
+            return  # Can't log without a backend session
+        if isinstance(metrics, STTMetrics):
+            log_stt_usage(
+                backend_url=BACKEND_API_URL,
+                session_id=session_id,
+                user_id=session_user_id,
+                agent_id=agent_id,
+                provider=stt_provider,
+                audio_duration=metrics.audio_duration,
+            )
+        elif isinstance(metrics, LLMMetrics):
+            log_llm_usage(
+                backend_url=BACKEND_API_URL,
+                session_id=session_id,
+                user_id=session_user_id,
+                agent_id=agent_id,
+                provider="google",
+                input_tokens=metrics.prompt_tokens,
+                output_tokens=metrics.completion_tokens,
+            )
+        elif isinstance(metrics, TTSMetrics):
+            log_tts_usage(
+                backend_url=BACKEND_API_URL,
+                session_id=session_id,
+                user_id=session_user_id,
+                agent_id=agent_id,
+                provider="resemble",
+                character_count=metrics.characters_count,
+            )
+
     # --- FUNCTION TOOLS ---
     # Build dynamic tools from agent config.functions array
     function_tools = []
