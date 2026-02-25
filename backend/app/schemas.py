@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
-from app.models import AgentType, SessionStatus, TranscriptSpeaker
+from app.models import AgentType, SessionStatus, TranscriptSpeaker, CallDirection, CallStatus
 
 
 # User Schemas
@@ -85,6 +85,9 @@ class VoiceSessionResponse(VoiceSessionBase):
     user_id: str
     agent_id: Optional[str]
     agent_name: Optional[str] = None  # Added for displaying agent name in UI
+    call_direction: Optional[CallDirection] = None
+    outbound_phone_number: Optional[str] = None
+    call_status: Optional[CallStatus] = None
     analysis: Optional[dict] = None  # Extracted from session_data["analysis"]
     created_at: datetime
     updated_at: datetime
@@ -141,3 +144,34 @@ class TokenResponse(BaseModel):
     token: str
     ws_url: str
     room_name: str
+
+
+# Outbound Call Schemas
+class OutboundCallRequest(BaseModel):
+    agent_id: str
+    phone_number: str  # E.164 format, e.g. +15551234567
+    callback_url: Optional[str] = None
+
+
+class OutboundCallResponse(BaseModel):
+    call_id: str
+    room_name: str
+    status: CallStatus
+
+    class Config:
+        from_attributes = True
+
+
+class CallStatusResponse(BaseModel):
+    call_id: str
+    status: SessionStatus
+    call_status: Optional[CallStatus] = None
+    call_direction: Optional[CallDirection] = None
+    outbound_phone_number: Optional[str] = None
+    room_name: str
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    duration: Optional[int] = None
+
+    class Config:
+        from_attributes = True
