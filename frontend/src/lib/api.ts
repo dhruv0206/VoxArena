@@ -31,6 +31,47 @@ export interface SessionsPage {
   limit: number;
 }
 
+export interface CostSummary {
+  total_cost: number;
+  this_month_cost: number;
+  avg_cost_per_call: number;
+  total_calls: number;
+}
+
+export interface ProviderCost {
+  provider: string;
+  cost: number;
+  calls: number;
+}
+
+export interface CostTimelineEntry {
+  date: string;
+  costs: Record<string, number>;
+  total: number;
+}
+
+export interface AgentCost {
+  agent_id: string;
+  agent_name: string;
+  calls: number;
+  total_cost: number;
+  avg_cost_per_call: number;
+}
+
+export interface SessionCostBreakdown {
+  provider: string;
+  service: string;
+  units: number;
+  unit_label: string;
+  cost: number;
+}
+
+export interface SessionCosts {
+  session_id: string;
+  total_cost: number;
+  breakdown: SessionCostBreakdown[];
+}
+
 export interface Agent {
   id: string;
   name: string;

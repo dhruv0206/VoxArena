@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/dashboard/layout-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { CallAnalysis } from "@/lib/api";
+import type { CallAnalysis, SessionCosts } from "@/lib/api";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
     return (
@@ -80,6 +80,7 @@ export default async function CallDetailsPage({
     // Fetch session details
     let session: Session | null = null;
     let transcripts: Transcript[] = [];
+    let sessionCosts: SessionCosts | null = null;
 
     try {
         const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -97,6 +98,14 @@ export default async function CallDetailsPage({
         );
         if (transcriptsResponse.ok) {
             transcripts = await transcriptsResponse.json();
+        }
+
+        const costsResponse = await fetch(
+            `${apiUrl}/sessions/${id}/costs`,
+            { cache: 'no-store' }
+        );
+        if (costsResponse.ok) {
+            sessionCosts = await costsResponse.json();
         }
     } catch (error) {
         console.error("Failed to fetch call details:", error);
@@ -339,6 +348,33 @@ export default async function CallDetailsPage({
                         </CardContent>
                     </Card>
                 ) : null}
+
+                {/* Cost Breakdown */}
+                {sessionCosts && sessionCosts.breakdown.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Cost Breakdown</CardTitle>
+                                <span className="text-lg font-bold">${sessionCosts.total_cost.toFixed(4)}</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {sessionCosts.breakdown.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
+                                        <div>
+                                            <p className="text-sm font-medium">{item.provider}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {item.service} — {item.units} {item.unit_label}
+                                            </p>
+                                        </div>
+                                        <span className="text-sm font-medium">${item.cost.toFixed(4)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Audio Player (Placeholder for future) */}
                 <Card>
