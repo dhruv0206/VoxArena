@@ -460,7 +460,7 @@ async def entrypoint(ctx: agents.JobContext):
     agent_config = None
     voice_id = None
     system_prompt = DEFAULT_INSTRUCTIONS
-    first_message = "Thank you for calling Qatar National Bank. My name is Sara, your virtual banking assistant. How may I assist you today?"
+    first_message = "Thank you for calling Qatar National Bank. My name is Dylan, your virtual banking assistant. How may I assist you today?"
     first_message_mode = "assistant_speaks_first"  # or "assistant_waits"
     metadata = {}
     
