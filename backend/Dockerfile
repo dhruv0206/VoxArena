@@ -35,7 +35,7 @@ echo "Running Alembic migrations..."\n\
 alembic upgrade head\n\
 \n\
 echo "Starting server..."\n\
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000\n\
+exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}\n\
 ' > /start.sh && chmod +x /start.sh
 
 CMD ["/start.sh"]
