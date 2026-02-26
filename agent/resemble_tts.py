@@ -139,6 +139,7 @@ class ResembleChunkedStream(tts.ChunkedStream):
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
                 },
+                model="chatterbox-turbo",
                 json=payload,
             ) as response:
                 if response.status_code >= 400:
