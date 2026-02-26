@@ -237,6 +237,42 @@ docker-compose up -d --build backend
 
 ---
 
+## LiveKit Setup
+
+LiveKit handles real-time audio between the browser, voice agent, and phone calls.
+
+1. Create an account at [LiveKit Cloud](https://cloud.livekit.io)
+2. Create a new project and copy your **API Key**, **API Secret**, and **WebSocket URL**
+3. Add to `backend/.env`, `frontend/.env.local`, and `agent/.env`:
+   ```
+   LIVEKIT_API_KEY=your_api_key
+   LIVEKIT_API_SECRET=your_api_secret
+   LIVEKIT_URL=wss://your-project.livekit.cloud
+   ```
+
+Docs: [LiveKit Getting Started](https://docs.livekit.io/home/get-started/) | [LiveKit Agents Quickstart](https://docs.livekit.io/agents/quickstarts/sip/)
+
+---
+
+## Twilio Telephony Setup (Optional)
+
+Required only for inbound/outbound phone calls. Not needed for browser-based voice testing.
+
+1. Create a [Twilio account](https://www.twilio.com) and buy a phone number
+2. Set up an Elastic SIP Trunk and connect it to LiveKit
+3. Create LiveKit inbound/outbound SIP trunks and dispatch rules
+4. Add to `backend/.env`:
+   ```
+   TWILIO_ACCOUNT_SID=your_account_sid
+   TWILIO_AUTH_TOKEN=your_auth_token
+   TWILIO_SIP_DOMAIN=your-domain.pstn.twilio.com
+   LIVEKIT_SIP_TRUNK_ID=ST_xxxxxxxxxxxx
+   ```
+
+Docs: [LiveKit SIP Trunking](https://docs.livekit.io/sip/) | [LiveKit Inbound Trunk](https://docs.livekit.io/sip/trunk/inbound/) | [LiveKit Outbound Trunk](https://docs.livekit.io/sip/trunk/outbound/) | [LiveKit + Twilio Setup Guide](https://docs.livekit.io/sip/trunk/twilio/) | [Twilio Elastic SIP Trunking](https://www.twilio.com/docs/sip-trunking)
+
+---
+
 ## Troubleshooting
 
 ### Backend can't connect to database
@@ -257,3 +293,15 @@ docker-compose up -d --build backend
 - Ensure PostgreSQL is running and accessible
 - Run `alembic upgrade head` from the `backend/` directory with the virtual environment activated
 - If migrations are out of sync: `alembic current` shows the current state
+
+### Inbound calls don't reach the agent
+- Verify the Twilio trunk has LiveKit's SIP URI as the origination URL
+- Check `lk sip inbound list` — the phone number must match exactly (with country code)
+- Check `lk sip dispatch list` — a dispatch rule must exist
+- Verify LiveKit credentials match between backend and agent
+
+### Outbound calls fail
+- Check `LIVEKIT_SIP_TRUNK_ID` in backend `.env` matches the outbound trunk ID
+- Verify Twilio credential list is attached to the trunk's termination settings
+- Phone numbers must be in E.164 format (e.g., `+15105550100`)
+- Check `lk sip outbound list` to verify the outbound trunk exists
