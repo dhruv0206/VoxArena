@@ -1,0 +1,59 @@
+---
+title: Call Intelligence
+description: AI-generated analysis of every completed call.
+---
+
+# Call Intelligence
+
+After every completed call, VoxArena automatically analyzes the conversation transcript and generates structured insights.
+
+## What's Analyzed
+
+| Field | Description |
+|-------|-------------|
+| **Summary** | 2-3 sentence overview of the conversation |
+| **Sentiment** | Overall caller sentiment: positive, neutral, or negative |
+| **Sentiment Score** | Confidence score (0-1) for the sentiment classification |
+| **Outcome** | Call outcome: resolved, unresolved, transferred, or escalated |
+| **Topics** | Key topics discussed during the call |
+| **Action Items** | Follow-up actions identified from the conversation |
+
+## How It Works
+
+1. When a session ends (`POST /api/sessions/by-room/{room_name}/end`), the backend collects all transcripts
+2. The full conversation is sent to the AI analysis service
+3. The analysis result is stored in the session's `analysis` JSON column
+4. Results are displayed on the call details page
+
+## Viewing Analysis
+
+Navigate to **Dashboard → Call Logs → [Session]** to see the analysis card with:
+
+- Summary text
+- Sentiment badge with confidence percentage
+- Outcome badge (color-coded)
+- Topic tags
+- Action item checklist
+
+## API Access
+
+```bash
+# Get analysis for a session
+curl http://localhost:8000/api/sessions/{session_id}/analysis
+```
+
+Response:
+
+```json
+{
+  "summary": "Customer called about a billing discrepancy on their latest invoice...",
+  "sentiment": "neutral",
+  "sentiment_score": 0.65,
+  "outcome": "resolved",
+  "topics": ["billing", "invoice", "refund"],
+  "action_items": [
+    "Process refund for $45.00",
+    "Send updated invoice to customer email"
+  ]
+}
+```

@@ -1,0 +1,65 @@
+---
+title: Voice Sessions
+description: How voice sessions work, from creation to analysis.
+---
+
+# Voice Sessions
+
+A voice session represents a single call between a user and an agent. Sessions track the full lifecycle from connection to post-call analysis.
+
+## Session Lifecycle
+
+```
+CREATED → ACTIVE → COMPLETED
+                 → FAILED
+```
+
+1. **CREATED**: Session record created when a token is generated
+2. **ACTIVE**: User joins the LiveKit room and audio flows
+3. **COMPLETED**: Session ends normally, triggers call analysis
+4. **FAILED**: Session ends due to an error
+
+## Starting a Session
+
+### Browser (Preview/Test)
+
+1. User clicks "Preview" on an agent in the dashboard
+2. Frontend requests a LiveKit token from `/api/livekit/token`
+3. The token route creates the room, dispatches the agent, and creates a session record
+4. User connects via WebRTC and the agent joins
+
+### Phone (Inbound)
+
+1. Caller dials a Twilio number assigned to an agent
+2. Twilio routes the call through the SIP trunk to LiveKit
+3. LiveKit dispatch rule triggers the agent worker
+4. Agent fetches config from the backend and starts the pipeline
+
+### Phone (Outbound)
+
+1. User initiates a call from the dashboard via `POST /api/calls/outbound`
+2. Backend creates a LiveKit SIP participant for the phone number
+3. Agent joins the room and connects to the caller
+
+## Transcripts
+
+Every message in the conversation is saved as a transcript entry with:
+
+- **speaker**: `USER` or `AGENT`
+- **content**: The message text
+- **timestamp**: When the message was spoken
+
+Transcripts are streamed from the agent worker to the backend in real-time via `POST /api/sessions/by-room/{room_name}/transcripts`.
+
+## Post-Call Analysis
+
+When a session ends, the backend triggers AI analysis using the full transcript. See [Call Intelligence](/features/call-intelligence) for details.
+
+## Viewing Sessions
+
+Navigate to **Dashboard → Call Logs** to browse all sessions. Click any session to see:
+
+- Session metadata (status, duration, start time)
+- Full conversation transcript
+- Call analysis (summary, sentiment, topics, action items)
+- Cost breakdown by provider

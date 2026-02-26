@@ -1,0 +1,70 @@
+---
+title: Docker Configuration
+description: Docker Compose setup and service configuration.
+---
+
+# Docker Configuration
+
+VoxArena uses Docker Compose to orchestrate all four services.
+
+## Services
+
+```yaml
+services:
+  postgres:       # PostgreSQL 15 — port 5432
+  backend:        # FastAPI — port 8000 (depends on postgres)
+  agent:          # LiveKit agent (depends on backend)
+  frontend:       # Next.js — port 3000 (depends on backend)
+```
+
+## Networking
+
+When running in Docker, services communicate on an internal network:
+
+| From → To | URL | Reason |
+|-----------|-----|--------|
+| Frontend (server) → Backend | `http://backend:8000/api` | Server-side rendering (internal) |
+| Frontend (client) → Backend | `http://localhost:8000/api` | Browser requests (host-mapped) |
+| Agent → Backend | `http://backend:8000/api` | Config fetch, transcripts, usage |
+| Backend → PostgreSQL | `postgres:5432` | Database queries |
+
+<Warning>
+The frontend uses two different API URLs:
+- **`INTERNAL_API_URL`** (`http://backend:8000/api`) — used by server components inside Docker
+- **`NEXT_PUBLIC_API_URL`** (`http://localhost:8000/api`) — used by client components in the browser
+
+Do not remove `INTERNAL_API_URL` from docker-compose.yml — server components cannot reach `localhost:8000` from inside the container.
+</Warning>
+
+## Database Password
+
+The database password is configured via `DB_PASSWORD` in `backend/.env`:
+
+```bash
+# backend/.env
+DB_PASSWORD=your_password_here
+```
+
+Docker Compose reads this via `env_file` and uses it for both the PostgreSQL container and the backend's `DATABASE_URL`. If `DB_PASSWORD` is not set, Docker Compose will refuse to start with an error message.
+
+## Commands
+
+```bash
+# Start all services
+docker-compose up -d --build
+
+# View all logs
+docker-compose logs -f
+
+# View logs for one service
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose down
+
+# Stop and reset database
+docker-compose down -v
+
+# Rebuild one service
+docker-compose up -d --build backend
+```

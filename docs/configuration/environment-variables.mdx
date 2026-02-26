@@ -1,0 +1,59 @@
+---
+title: Environment Variables
+description: Complete reference for all configuration variables across services.
+---
+
+# Environment Variables
+
+VoxArena uses three `.env` files, one per service.
+
+## Backend (`backend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DB_PASSWORD` | Yes | PostgreSQL password (used to build `DATABASE_URL` and by Docker Compose) |
+| `DATABASE_URL` | No | Full PostgreSQL connection string (overrides `DB_PASSWORD` if set) |
+| `LIVEKIT_API_KEY` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_API_SECRET` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_URL` | Yes | LiveKit server URL (e.g., `wss://your-project.livekit.cloud`) |
+| `RESEMBLE_API_KEY` | Yes | From [Resemble AI](https://app.resemble.ai/account/api) |
+| `TWILIO_ACCOUNT_SID` | For telephony | From [Twilio Console](https://console.twilio.com) |
+| `TWILIO_AUTH_TOKEN` | For telephony | From [Twilio Console](https://console.twilio.com) |
+| `TWILIO_SIP_DOMAIN` | For telephony | Your SIP domain (e.g., `your-domain.sip.livekit.cloud`) |
+| `FRONTEND_URL` | No | CORS origin (default: `http://localhost:3000`) |
+| `PORT` | No | Server port (default: `8000`) |
+| `DEBUG` | No | Debug mode (default: `true`) |
+
+## Frontend (`frontend/.env.local`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | From [Clerk](https://clerk.com) |
+| `CLERK_SECRET_KEY` | Yes | From [Clerk](https://clerk.com) |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend API URL (e.g., `http://localhost:8000/api`) |
+| `LIVEKIT_API_KEY` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_API_SECRET` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_URL` | Yes | LiveKit server URL |
+| `GOOGLE_API_KEY` | No | For LLM model listing in agent config UI |
+| `DEEPGRAM_API_KEY` | No | For STT model listing in agent config UI |
+| `RESEMBLE_API_KEY` | No | For TTS voice listing in agent config UI |
+| `RESEMBLE_PROJECT_UUID` | No | Resemble project UUID |
+
+## Agent (`agent/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LIVEKIT_API_KEY` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_API_SECRET` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
+| `LIVEKIT_URL` | Yes | LiveKit server URL |
+| `GOOGLE_API_KEY` | Yes | From [Google AI Studio](https://aistudio.google.com/app/apikey) — for Gemini LLM |
+| `RESEMBLE_API_KEY` | Yes | From [Resemble AI](https://app.resemble.ai) |
+| `RESEMBLE_PROJECT_UUID` | Yes | Resemble project UUID |
+| `RESEMBLE_VOICE_UUID` | Yes | Default voice UUID (fallback when agent has no voice configured) |
+| `ASSEMBLYAI_API_KEY` | For AssemblyAI STT | From [AssemblyAI](https://www.assemblyai.com) |
+| `ELEVENLABS_API_KEY` | For ElevenLabs STT | From [ElevenLabs](https://elevenlabs.io) |
+| `DEEPGRAM_API_KEY` | For Deepgram STT | From [Deepgram](https://console.deepgram.com) |
+
+<Note>
+You need at least one STT provider key in the agent `.env`. AssemblyAI is the default.
+</Note>

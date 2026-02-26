@@ -1,0 +1,57 @@
+---
+title: Call Transfer
+description: Transfer active calls to external phone numbers.
+---
+
+# Call Transfer
+
+Transfer active calls to external phone numbers with warm or cold transfer support.
+
+## Transfer Types
+
+### Cold Transfer
+
+The caller is immediately connected to the target number. The agent drops off the call.
+
+### Warm Transfer
+
+The agent introduces the caller to the transfer target before disconnecting. This ensures a smooth handoff with context.
+
+## Using Transfers
+
+### From the Dashboard
+
+On any active call in **Dashboard → Call Logs → [Session]**, the transfer controls allow you to:
+
+1. Enter a destination phone number (E.164 format)
+2. Select cold or warm transfer
+3. Click Transfer
+
+### Via API
+
+```bash
+curl -X POST http://localhost:8000/api/sessions/{session_id}/transfer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_number": "+15105550200",
+    "transfer_type": "cold"
+  }'
+```
+
+## How It Works
+
+1. The backend receives the transfer request
+2. LiveKit creates a new SIP participant for the target number
+3. For cold transfers: the original agent is removed from the room
+4. For warm transfers: all three participants (caller, agent, target) are briefly connected before the agent exits
+5. The session record is updated with transfer details (target, type, status)
+
+## Session Tracking
+
+Transfer details are stored on the session:
+
+| Field | Description |
+|-------|-------------|
+| `transfer_target` | Destination phone number |
+| `transfer_type` | `cold` or `warm` |
+| `transfer_status` | Current transfer state |

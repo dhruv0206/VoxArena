@@ -1,0 +1,81 @@
+---
+title: Introduction
+description: Open-source voice AI platform for building, testing, and deploying voice agents.
+---
+
+# What is VoxArena?
+
+VoxArena is an open-source voice AI platform that lets you build, test, and deploy voice agents through a web dashboard. Connect your own STT, LLM, and TTS providers, configure agents with custom system prompts and tools, and handle inbound/outbound phone calls — all with real-time transcription, cost tracking, and post-call intelligence.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Agent Configuration" icon="user-gear" iconType="solid">
+    Create voice agents with custom system prompts, STT providers, voice selection, function calling, and webhooks.
+  </Card>
+  <Card title="Voice Pipeline" icon="wave-square" iconType="solid">
+    Real-time STT → LLM → TTS pipeline powered by LiveKit with sub-second latency.
+  </Card>
+  <Card title="Telephony" icon="phone-volume" iconType="solid">
+    Inbound and outbound phone calls via Twilio SIP trunks. Buy, assign, and manage numbers from the dashboard.
+  </Card>
+  <Card title="Call Intelligence" icon="magnifying-glass-chart" iconType="solid">
+    AI-generated summaries, sentiment analysis, topic extraction, and action items after every call.
+  </Card>
+  <Card title="Cost Tracking" icon="money-bill-trend-up" iconType="solid">
+    Per-session cost breakdown across STT, LLM, and TTS. Aggregation by provider, agent, and time period.
+  </Card>
+  <Card title="Dashboard" icon="chart-pie" iconType="solid">
+    Full web dashboard with analytics, call logs, transcripts, and agent management.
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Frontend | Next.js 16, React 19, Tailwind CSS, shadcn/ui |
+| Auth | Clerk |
+| Backend | FastAPI, SQLAlchemy, PostgreSQL |
+| Agent | Python, LiveKit Agents SDK |
+| STT | AssemblyAI, ElevenLabs, Deepgram |
+| LLM | Google Gemini |
+| TTS | Resemble AI |
+| Telephony | Twilio |
+| Real-time | LiveKit |
+
+## Architecture
+
+```
+VoxArena/
+├── frontend/    # Next.js 16 web dashboard
+├── backend/     # FastAPI REST API
+├── agent/       # Python LiveKit voice agent
+└── docker-compose.yml
+```
+
+Four services run together:
+
+| Service | Description | URL |
+|---------|-------------|-----|
+| Frontend | Next.js dashboard | http://localhost:3000 |
+| Backend | FastAPI API server | http://localhost:8000 |
+| Agent | LiveKit voice agent worker | Connected to LiveKit Cloud |
+| PostgreSQL | Database | localhost:5432 |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" iconType="solid" href="/quickstart">
+    Get VoxArena running with Docker Compose in under 5 minutes.
+  </Card>
+  <Card title="Local Development" icon="code" iconType="solid" href="/local-development">
+    Set up each service individually for development with hot-reload.
+  </Card>
+  <Card title="API Reference" icon="square-terminal" iconType="solid" href="/api-reference">
+    Explore all REST API endpoints with an interactive playground.
+  </Card>
+  <Card title="Architecture" icon="sitemap" iconType="solid" href="/architecture/overview">
+    Understand the voice pipeline, database schema, and system design.
+  </Card>
+</CardGroup>

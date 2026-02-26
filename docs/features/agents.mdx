@@ -1,0 +1,64 @@
+---
+title: Agent Configuration
+description: Create and configure voice agents with custom prompts, voices, and tools.
+---
+
+# Agent Configuration
+
+Agents are the core of VoxArena. Each agent defines a voice persona with its own system prompt, voice, STT provider, functions, and webhooks.
+
+## Creating an Agent
+
+Navigate to **Dashboard → Agents → Create Agent** or use the API:
+
+```bash
+curl -X POST http://localhost:8000/api/agents/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Customer Support",
+    "type": "PIPELINE",
+    "user_id": "your-clerk-user-id",
+    "config": {
+      "system_prompt": "You are a friendly customer support agent for Acme Corp...",
+      "first_message": "Hello! Welcome to Acme Corp. How can I help you today?",
+      "stt_provider": "assemblyai",
+      "voice_id": "resemble-voice-uuid"
+    }
+  }'
+```
+
+## Configuration Options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `system_prompt` | String | Instructions for the LLM defining agent behavior |
+| `first_message` | String | Greeting the agent speaks when the call starts |
+| `stt_provider` | String | `assemblyai`, `elevenlabs`, or `deepgram` |
+| `voice_id` | String | Resemble AI voice UUID |
+| `functions` | Array | Function calling definitions (see [Function Calling](/features/function-calling)) |
+| `webhooks.pre_call` | String | URL called before the voice session starts |
+| `webhooks.post_call` | String | URL called after the session ends |
+
+## STT Provider Selection
+
+Each agent can use a different speech-to-text provider:
+
+| Provider | Best For |
+|----------|----------|
+| **AssemblyAI** (default) | High accuracy, general purpose |
+| **ElevenLabs** | Low latency streaming |
+| **Deepgram** | Real-time streaming, enterprise |
+
+Set the provider in the agent config and ensure the corresponding API key is set in `agent/.env`.
+
+## Voice Selection
+
+Voices are pulled from your Resemble AI account. Browse available voices at **Dashboard → Agents → [Agent] → Voice** or via the API:
+
+```bash
+curl http://localhost:8000/api/resemble/voices?page=1&page_size=10
+```
+
+## Testing
+
+Use the **Preview** button on any agent to start a browser-based voice session without a phone call. This connects directly via LiveKit WebRTC.

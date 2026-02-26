@@ -1,0 +1,96 @@
+---
+title: Architecture Overview
+description: System design and service architecture of VoxArena.
+---
+
+# Architecture Overview
+
+VoxArena is composed of four services that work together to provide a complete voice AI platform.
+
+## System Diagram
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Browser                            │
+│  ┌──────────────┐         ┌──────────────────────────┐  │
+│  │  Dashboard    │  REST   │  Voice Session (WebRTC)  │  │
+│  │  (Next.js)   │────────▶│  LiveKit Client SDK      │  │
+│  └──────┬───────┘         └──────────┬───────────────┘  │
+└─────────┼────────────────────────────┼──────────────────┘
+          │ HTTP                       │ WebRTC
+          ▼                            ▼
+┌──────────────────┐        ┌──────────────────────────┐
+│  Backend API     │        │  LiveKit Cloud            │
+│  (FastAPI)       │◀──────▶│  (Real-time media)        │
+│                  │  REST   │                          │
+│  ┌────────────┐  │        │  ┌──────────────────────┐│
+│  │ PostgreSQL │  │        │  │  Voice Agent Worker   ││
+│  │            │  │        │  │  (Python)             ││
+│  └────────────┘  │        │  └──────────────────────┘│
+└──────────────────┘        └──────────────────────────┘
+                                       │
+                            ┌──────────┼──────────┐
+                            ▼          ▼          ▼
+                         ┌─────┐  ┌───────┐  ┌─────┐
+                         │ STT │  │  LLM  │  │ TTS │
+                         └─────┘  └───────┘  └─────┘
+```
+
+## Services
+
+### Frontend (Next.js 16)
+
+The web dashboard built with Next.js 16, React 19, Tailwind CSS, and shadcn/ui. Handles:
+
+- User authentication via Clerk
+- Agent configuration UI
+- Voice session interface (LiveKit WebRTC)
+- Call logs, analytics, and cost dashboards
+- LiveKit token generation (server-side API route)
+
+### Backend (FastAPI)
+
+The REST API server handling all business logic:
+
+- Agent CRUD operations
+- Session management and transcripts
+- Cost tracking and aggregation
+- Call analysis (AI-generated summaries, sentiment)
+- Telephony management (Twilio number provisioning)
+- LiveKit webhook processing
+
+### Voice Agent (Python)
+
+A LiveKit Agents SDK worker that runs the real-time voice pipeline:
+
+- Joins LiveKit rooms when dispatched
+- Fetches agent configuration from the backend API
+- Runs the STT → LLM → TTS pipeline
+- Executes function calls and reports usage events
+- Streams transcripts back to the backend
+
+### PostgreSQL
+
+Stores all persistent data: users, agents, sessions, transcripts, and usage events.
+
+## Communication Patterns
+
+| From | To | Protocol | Purpose |
+|------|----|----------|---------|
+| Browser | Frontend | HTTPS | Dashboard UI |
+| Browser | LiveKit | WebRTC | Real-time audio |
+| Frontend (server) | Backend | HTTP | API calls (SSR) |
+| Frontend (client) | Backend | HTTP | API calls (browser) |
+| Agent | LiveKit | WebSocket | Audio pipeline |
+| Agent | Backend | HTTP | Config, transcripts, usage |
+| Backend | PostgreSQL | TCP | Database queries |
+| LiveKit | Backend | HTTP | Webhook events |
+
+## Docker Networking
+
+When running in Docker Compose, services communicate on an internal network:
+
+- Frontend server components call `http://backend:8000/api` (internal)
+- Frontend client components call `http://localhost:8000/api` (host-mapped)
+- Agent calls `http://backend:8000/api` (internal)
+- Backend connects to `postgres:5432` (internal)

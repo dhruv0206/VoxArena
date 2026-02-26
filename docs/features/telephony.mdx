@@ -1,0 +1,55 @@
+---
+title: Telephony
+description: Inbound and outbound phone calls via Twilio.
+---
+
+# Telephony
+
+VoxArena supports real phone calls through Twilio SIP trunks routed via LiveKit.
+
+## Phone Number Management
+
+Manage phone numbers directly from the dashboard or API:
+
+- **Search**: Find available numbers by area code or country
+- **Buy**: Purchase a number and assign it to an agent
+- **Assign**: Assign an existing Twilio number to an agent
+- **Release**: Release a number from an agent
+
+```bash
+# Search available numbers
+curl "http://localhost:8000/api/telephony/numbers/search?country=US&area_code=510"
+
+# Buy and assign to agent
+curl -X POST http://localhost:8000/api/telephony/numbers/buy \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number": "+15105550100", "agent_id": "uuid"}'
+```
+
+## Inbound Calls
+
+When someone calls a number assigned to an agent:
+
+1. Twilio routes the call to LiveKit via the SIP trunk
+2. LiveKit's dispatch rule matches the phone number to a room
+3. The agent worker joins and starts the voice pipeline
+4. The backend's `/api/telephony/lookup` endpoint resolves the phone number to the correct agent
+
+## Outbound Calls
+
+Initiate calls from the dashboard:
+
+1. Select an agent and enter a phone number
+2. The backend creates a LiveKit SIP participant via `POST /api/calls/outbound`
+3. LiveKit dials out through the Twilio SIP trunk
+4. The agent joins and handles the conversation
+
+## Prerequisites
+
+Telephony requires:
+- A Twilio account with a phone number
+- Twilio Elastic SIP Trunk connected to LiveKit
+- LiveKit inbound and outbound SIP trunk configuration
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SIP_DOMAIN`, and `LIVEKIT_SIP_TRUNK_ID` in `backend/.env`
+
+See [Telephony Setup](/configuration/telephony) for the full configuration guide.

@@ -1,0 +1,90 @@
+---
+title: Voice Pipeline
+description: How the real-time voice pipeline processes audio from caller to agent.
+---
+
+# Voice Pipeline
+
+The voice pipeline is the core of VoxArena — it processes audio in real-time between the caller and the AI agent.
+
+## Pipeline Flow
+
+```
+Caller Audio → STT → Transcript → LLM → Response → TTS → Agent Audio
+                                    ↓
+                          Function Tool Execution
+                                    ↓
+                          Webhook Integration
+```
+
+## Components
+
+### Voice Activity Detection (VAD)
+
+[Silero VAD](https://github.com/snakers4/silero-vad) detects when the caller starts and stops speaking. This enables natural turn-taking without manual push-to-talk.
+
+### Speech-to-Text (STT)
+
+Converts caller audio to text. VoxArena supports three providers, configurable per agent:
+
+| Provider | Key Feature | Config Value |
+|----------|-------------|--------------|
+| AssemblyAI | High accuracy, default provider | `assemblyai` |
+| ElevenLabs | Low latency streaming | `elevenlabs` |
+| Deepgram | Real-time streaming | `deepgram` |
+
+### Large Language Model (LLM)
+
+Processes the transcript and generates a response. Currently uses Google Gemini 2.5 Flash.
+
+The LLM receives:
+- The agent's system prompt
+- Conversation history
+- Available function definitions (if configured)
+
+### Function Calling
+
+When the LLM decides to use a tool, the agent:
+1. Extracts the function name and arguments
+2. Makes an HTTP request to the configured endpoint
+3. Returns the result to the LLM for incorporation into the response
+
+See [Function Calling](/features/function-calling) for configuration details.
+
+### Text-to-Speech (TTS)
+
+Converts the LLM response to audio using Resemble AI. Each agent can be configured with a different voice from the Resemble voice library.
+
+## Agent Configuration
+
+The agent worker fetches its configuration from the backend API when it joins a room. The configuration includes:
+
+- System prompt and first message
+- STT provider selection
+- Voice UUID for TTS
+- Function definitions
+- Webhook URLs
+
+```json
+{
+  "system_prompt": "You are a helpful customer service agent...",
+  "first_message": "Hello! How can I help you today?",
+  "stt_provider": "assemblyai",
+  "voice_id": "uuid-of-resemble-voice",
+  "functions": [...],
+  "webhooks": {
+    "pre_call": "https://example.com/pre-call",
+    "post_call": "https://example.com/post-call"
+  }
+}
+```
+
+## Real-time Transport
+
+[LiveKit](https://livekit.io) handles the real-time audio transport:
+
+- **Browser sessions**: WebRTC connection via LiveKit Client SDK
+- **Phone calls**: Twilio SIP trunk → LiveKit SIP bridge
+- **Agent**: LiveKit Agents SDK connects as a participant
+
+All audio streams through LiveKit Cloud, ensuring low latency and reliability.

@@ -1,0 +1,135 @@
+---
+title: Database Schema
+description: PostgreSQL database tables and relationships.
+---
+
+# Database Schema
+
+VoxArena uses PostgreSQL with SQLAlchemy ORM and Alembic migrations.
+
+## Tables
+
+### users
+
+Stores Clerk-authenticated users.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| clerk_id | String | Clerk user ID (unique) |
+| email | String | User email |
+| name | String | User display name (nullable) |
+| created_at | DateTime | Account creation time |
+| updated_at | DateTime | Last update time |
+
+### agents
+
+Voice agent configurations.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| user_id | UUID | Foreign key → users |
+| name | String | Agent display name |
+| description | Text | Agent description (nullable) |
+| type | Enum | STT, LLM, TTS, or PIPELINE |
+| config | JSON | Full agent configuration blob |
+| phone_number | String | Assigned Twilio number (nullable) |
+| twilio_sid | String | Twilio number SID (nullable) |
+| is_active | Boolean | Soft delete flag |
+| created_at | DateTime | Creation time |
+| updated_at | DateTime | Last update time |
+
+The `config` JSON column stores the complete agent configuration:
+
+```json
+{
+  "system_prompt": "...",
+  "first_message": "...",
+  "stt_provider": "assemblyai",
+  "voice_id": "resemble-voice-uuid",
+  "functions": [
+    {
+      "name": "get_weather",
+      "description": "Get current weather",
+      "endpoint": "https://api.example.com/weather",
+      "method": "GET",
+      "parameters": {...}
+    }
+  ],
+  "webhooks": {
+    "pre_call": "https://...",
+    "post_call": "https://..."
+  }
+}
+```
+
+### voice_sessions
+
+Call session records.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| room_name | String | LiveKit room name (unique) |
+| user_id | String | Foreign key → users |
+| agent_id | UUID | Foreign key → agents (nullable) |
+| status | Enum | CREATED, ACTIVE, COMPLETED, FAILED |
+| started_at | DateTime | Call start time |
+| ended_at | DateTime | Call end time |
+| duration | Integer | Duration in seconds |
+| call_direction | Enum | INBOUND or OUTBOUND (nullable) |
+| outbound_phone_number | String | Dialed number for outbound calls (nullable) |
+| call_status | Enum | RINGING, ANSWERED, COMPLETED, FAILED, NO_ANSWER |
+| session_data | JSON | Metadata including call analysis |
+| total_cost | Decimal | Total session cost (nullable) |
+| cost_breakdown | JSON | Cost breakdown by provider (nullable) |
+| transferred_to | String | Transfer destination number (nullable) |
+| transfer_type | Enum | WARM or COLD (nullable) |
+| transfer_timestamp | DateTime | When transfer occurred (nullable) |
+| created_at | DateTime | Record creation time |
+| updated_at | DateTime | Last update time |
+
+### transcripts
+
+Per-message conversation logs.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| session_id | UUID | Foreign key → voice_sessions |
+| content | Text | Message content |
+| speaker | Enum | USER or AGENT |
+| timestamp | DateTime | Message time |
+
+### usage_events
+
+Granular cost tracking events logged by the agent worker.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| session_id | UUID | Foreign key → voice_sessions |
+| user_id | UUID | Foreign key → users |
+| agent_id | UUID | Foreign key → agents (nullable) |
+| provider | String | Service provider (e.g., assemblyai, google, resemble) |
+| event_type | Enum | `stt_minutes`, `llm_tokens`, or `tts_characters` |
+| quantity | Decimal | Usage quantity |
+| unit_cost | Decimal | Cost per unit |
+| total_cost | Decimal | Calculated total cost in USD |
+| created_at | DateTime | Event time |
+
+## Migrations
+
+Database migrations are managed by Alembic:
+
+```bash
+# Run all pending migrations
+alembic upgrade head
+
+# Check current migration state
+alembic current
+
+# Create a new migration
+alembic revision --autogenerate -m "description"
+```

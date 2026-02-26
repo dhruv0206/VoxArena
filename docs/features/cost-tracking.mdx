@@ -1,0 +1,96 @@
+---
+title: Cost Tracking
+description: Per-session and aggregate cost tracking across all providers.
+---
+
+# Cost Tracking
+
+VoxArena tracks the cost of every API call made during voice sessions — STT minutes, LLM tokens, and TTS characters.
+
+## How Costs Are Tracked
+
+1. The agent worker logs usage events in real-time via `POST /api/usage/events`
+2. Each event records the provider, service type, units consumed, and calculated cost
+3. The backend aggregates costs for dashboards and reports
+
+## Provider Rates
+
+Rates are defined in `backend/app/cost_rates.py` and can be updated in one place.
+
+| Service | Provider | Unit | Rate | Hourly Equivalent |
+|---------|----------|------|------|--------------------|
+| STT | Deepgram | per minute | $0.0077 | $0.46/hr |
+| STT | AssemblyAI | per minute | $0.0078 | $0.47/hr |
+| STT | ElevenLabs | per minute | $0.0167 | $1.00/hr |
+| LLM | Google Gemini 2.5 Flash | per 1K tokens (blended) | $0.00086 | ~$0.86/1M tokens |
+| TTS | Resemble AI | per character | $0.00004 | $40/1M chars |
+
+<Note>
+The Gemini rate is a blended estimate assuming a ~3:1 input-to-output token ratio. Actual rates: $0.30/1M input tokens, $2.50/1M output tokens.
+</Note>
+
+## Usage Event Structure
+
+```json
+{
+  "session_id": "uuid",
+  "user_id": "clerk-user-id",
+  "agent_id": "agent-uuid",
+  "provider": "assemblyai",
+  "event_type": "stt_minutes",
+  "quantity": 2.5,
+  "unit_cost": 0.0078,
+  "total_cost": 0.0195
+}
+```
+
+## Dashboard Views
+
+### Cost Summary
+
+**Dashboard → Costs** shows:
+
+- Total cost across all sessions
+- This month's cost
+- Breakdown by provider (pie chart)
+
+### Cost Timeline
+
+View costs over time with daily, weekly, or monthly granularity.
+
+### Cost by Agent
+
+See which agents cost the most, helping you optimize prompts and configurations.
+
+### Per-Session Breakdown
+
+**Dashboard → Call Logs → [Session]** shows the cost breakdown for a single call:
+
+| Provider | Service | Units | Cost |
+|----------|---------|-------|------|
+| AssemblyAI | STT | 2.5 minutes | $0.0195 |
+| Google Gemini | LLM | 1,250 tokens | $0.0011 |
+| Resemble AI | TTS | 450 characters | $0.0180 |
+| **Total** | | | **$0.0386** |
+
+## What's Not Tracked
+
+VoxArena currently does **not** track costs for:
+
+- **LiveKit** — connection minutes (~$0.0005/min per participant). These are billed by LiveKit directly.
+- **Twilio** — per-minute telephony charges for inbound/outbound calls. These are billed by Twilio directly.
+
+These costs are external to the voice pipeline and must be monitored in each provider's billing dashboard.
+
+## API Endpoints
+
+```bash
+# Cost summary
+curl -H "x-user-id: clerk_id" http://localhost:8000/api/costs/summary
+
+# Cost timeline (daily/weekly/monthly)
+curl -H "x-user-id: clerk_id" "http://localhost:8000/api/costs/timeline?period=daily"
+
+# Cost by agent
+curl -H "x-user-id: clerk_id" http://localhost:8000/api/costs/by-agent
+```

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "willow",
+  "name": "VoxArena",
+  "colors": {
+    "primary": "#6D28D9",
+    "light": "#8B5CF6",
+    "dark": "#A78BFA"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "icon": "play",
+            "pages": ["introduction", "quickstart", "local-development"]
+          },
+          {
+            "group": "Architecture",
+            "icon": "diagram-project",
+            "pages": ["architecture/overview", "architecture/voice-pipeline", "architecture/database"]
+          },
+          {
+            "group": "Configuration",
+            "icon": "gear",
+            "pages": ["configuration/environment-variables", "configuration/docker", "configuration/livekit", "configuration/telephony"]
+          },
+          {
+            "group": "Features",
+            "icon": "sparkles",
+            "pages": [
+              "features/agents",
+              "features/voice-sessions",
+              "features/function-calling",
+              "features/call-intelligence",
+              "features/cost-tracking",
+              "features/telephony",
+              "features/call-transfer"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "square-terminal",
+        "openapi": "/openapi.json"
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/dhruv0206/VoxArena"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/dhruv0206/VoxArena"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+---
+title: Telephony Setup
+description: Configure Twilio SIP trunks for inbound and outbound phone calls.
+---
+
+# Telephony Setup (Optional)
+
+Twilio telephony is required only for inbound/outbound phone calls. Browser-based voice testing works without it.
+
+## Setup Steps
+
+1. Create a [Twilio account](https://www.twilio.com) and buy a phone number
+2. Set up an Elastic SIP Trunk and connect it to LiveKit
+3. Create LiveKit inbound/outbound SIP trunks and dispatch rules
+4. Add credentials to `backend/.env`:
+
+```bash
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_SIP_DOMAIN=your-domain.pstn.twilio.com
+LIVEKIT_SIP_TRUNK_ID=ST_xxxxxxxxxxxx
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Inbound calls don't reach the agent">
+    - Verify the Twilio trunk has LiveKit's SIP URI as the origination URL
+    - Check `lk sip inbound list` — the phone number must match exactly (with country code)
+    - Check `lk sip dispatch list` — a dispatch rule must exist
+    - Verify LiveKit credentials match between backend and agent
+  </Accordion>
+  <Accordion title="Outbound calls fail">
+    - Check `LIVEKIT_SIP_TRUNK_ID` in backend `.env` matches the outbound trunk ID
+    - Verify Twilio credential list is attached to the trunk's termination settings
+    - Phone numbers must be in E.164 format (e.g., `+15105550100`)
+    - Check `lk sip outbound list` to verify the outbound trunk exists
+  </Accordion>
+</AccordionGroup>
+
+## Documentation
+
+- [LiveKit SIP Trunking](https://docs.livekit.io/sip/)
+- [LiveKit Inbound Trunk](https://docs.livekit.io/sip/trunk/inbound/)
+- [LiveKit Outbound Trunk](https://docs.livekit.io/sip/trunk/outbound/)
+- [LiveKit + Twilio Setup Guide](https://docs.livekit.io/sip/trunk/twilio/)
+- [Twilio Elastic SIP Trunking](https://www.twilio.com/docs/sip-trunking)

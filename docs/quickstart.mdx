@@ -1,0 +1,83 @@
+---
+title: Quick Start
+description: Get VoxArena running with Docker Compose in under 5 minutes.
+---
+
+# Quick Start (Docker Compose)
+
+The easiest way to run VoxArena. All 4 services start with one command.
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- API keys for: LiveKit, AssemblyAI (or Deepgram/ElevenLabs), Google Gemini, Resemble AI, Clerk
+
+## 1. Clone the Repository
+
+```bash
+git clone https://github.com/dhruv0206/VoxArena.git
+cd VoxArena
+```
+
+## 2. Configure Environment Variables
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+cp agent/.env.example agent/.env
+```
+
+Edit each file and add your API keys. See [Environment Variables](/configuration/environment-variables) for the full reference.
+
+<Note>
+Make sure `DB_PASSWORD` is set in `backend/.env` before running Docker Compose. This is used for both the PostgreSQL container and the backend connection.
+</Note>
+
+## 3. Run
+
+```bash
+docker-compose up -d --build
+```
+
+This starts 4 services:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Voice Agent | Connected to LiveKit |
+| PostgreSQL | localhost:5432 |
+
+## 4. Open the Dashboard
+
+Visit [http://localhost:3000](http://localhost:3000) and sign in with Clerk.
+
+## Useful Commands
+
+```bash
+# View logs
+docker-compose logs -f
+
+# View logs for a specific service
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (resets database)
+docker-compose down -v
+
+# Rebuild a single service
+docker-compose up -d --build backend
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Variables" icon="key" href="/configuration/environment-variables">
+    Full reference for all configuration options.
+  </Card>
+  <Card title="LiveKit Setup" icon="signal" href="/configuration/livekit">
+    Get your LiveKit Cloud credentials.
+  </Card>
+</CardGroup>

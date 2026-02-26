@@ -1,0 +1,75 @@
+---
+title: Function Calling
+description: Give your agents the ability to call external APIs during conversations.
+---
+
+# Function Calling
+
+Function calling lets agents take actions during a conversation — like checking order status, looking up account info, or booking appointments — by calling external HTTP endpoints.
+
+## How It Works
+
+1. You define functions in the agent config with a name, description, endpoint, and parameters
+2. The LLM decides when to call a function based on the conversation
+3. The agent worker makes the HTTP request to your endpoint
+4. The response is fed back to the LLM to incorporate into its reply
+
+## Configuring Functions
+
+Add functions to your agent configuration:
+
+```json
+{
+  "functions": [
+    {
+      "name": "get_order_status",
+      "description": "Look up the status of a customer order by order ID",
+      "endpoint": "https://api.example.com/orders/{order_id}/status",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID to look up"
+          }
+        },
+        "required": ["order_id"]
+      }
+    },
+    {
+      "name": "create_ticket",
+      "description": "Create a support ticket",
+      "endpoint": "https://api.example.com/tickets",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ticket description"
+          }
+        },
+        "required": ["subject"]
+      }
+    }
+  ]
+}
+```
+
+## Parameter Substitution
+
+URL parameters wrapped in `{braces}` are automatically substituted from the function arguments. For example, `{order_id}` in the endpoint URL is replaced with the actual order ID from the LLM's function call.
+
+## Dashboard UI
+
+The agent settings page provides a visual editor for adding and configuring functions — no JSON editing required. Each function has fields for:
+
+- Function name
+- Description (used by the LLM to decide when to call it)
+- HTTP method and endpoint URL
+- Parameter schema with types and descriptions

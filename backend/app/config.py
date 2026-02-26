@@ -5,7 +5,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Database
-    db_password: str = "postgres"
+    db_password: str = ""
     database_url: str = ""
 
     # LiveKit
