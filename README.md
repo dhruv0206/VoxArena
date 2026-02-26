@@ -78,13 +78,29 @@ Caller Audio → STT → Transcript → LLM → Response → TTS → Agent Audio
                           Webhook Integration
 ```
 
+## Documentation
+
+Full docs at **[voxarena.mintlify.app](https://voxarena.mintlify.app)** — quick start, local development, configuration, and interactive API playground.
+
 ## Getting Started
 
-See [INSTALLATION.md](INSTALLATION.md) for full setup instructions (Docker Compose and local development).
+```bash
+git clone https://github.com/dhruv0206/VoxArena.git
+cd VoxArena
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+cp agent/.env.example agent/.env
+# Edit each .env file with your API keys
+docker-compose up -d --build
+```
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with Clerk.
+
+See the [Quick Start (Docker)](https://voxarena.mintlify.app/quickstart) or [Local Development](https://voxarena.mintlify.app/local-development) guide for full instructions.
 
 ## API Reference
 
-The backend exposes 32 endpoints across 8 routers, all prefixed with `/api`.
+The backend exposes 32 endpoints across 8 routers, all prefixed with `/api`. See the [interactive API playground](https://voxarena.mintlify.app/api-reference) for full details.
 
 ### Agents (`/api/agents`)
 | Method | Endpoint | Description |

@@ -247,7 +247,7 @@ export default async function DashboardPage() {
                         <div />
                         <div className="flex items-center gap-3">
                             <Button variant="ghost" size="sm" className="gap-2" asChild>
-                                <a href="https://docs.example.com" target="_blank">
+                                <a href="https://voxarena.mintlify.app" target="_blank">
                                     <DocsIcon className="h-4 w-4" />
                                     Docs
                                 </a>
