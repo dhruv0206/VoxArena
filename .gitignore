@@ -112,6 +112,7 @@ htmlcov/
 # Project Internal Docs
 # ===================
 VISION.md
+ARCHITECTURE.md
 
 # ===================
 # Misc

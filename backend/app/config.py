@@ -1,16 +1,18 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "postgresql://postgres:password@localhost:5432/voxarena"
-    
+    db_password: str = "postgres"
+    database_url: str = ""
+
     # LiveKit
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
     livekit_url: str = ""
-    
+
     # Resemble AI
     resemble_api_key: str = ""
 
@@ -25,10 +27,16 @@ class Settings(BaseSettings):
     # Server
     port: int = 8000
     debug: bool = True
-    
+
     # CORS
     frontend_url: str = "http://localhost:3000"
-    
+
+    @model_validator(mode="after")
+    def build_database_url(self):
+        if not self.database_url:
+            self.database_url = f"postgresql://postgres:{self.db_password}@localhost:5432/voxarena"
+        return self
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
