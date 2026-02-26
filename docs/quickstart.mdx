@@ -30,14 +30,18 @@ cp agent/.env.example agent/.env
 Edit each file and add your API keys. See [Environment Variables](/configuration/environment-variables) for the full reference.
 
 <Note>
-Make sure `DB_PASSWORD` is set in `backend/.env` before running Docker Compose. This is used for both the PostgreSQL container and the backend connection.
+Make sure `DB_PASSWORD` is set in `backend/.env` before running Docker Compose. This password is used for both the PostgreSQL container and the backend connection.
 </Note>
 
 ## 3. Run
 
 ```bash
-docker-compose up -d --build
+docker-compose --env-file backend/.env up -d --build
 ```
+
+<Warning>
+The `--env-file backend/.env` flag is required. Docker Compose needs `DB_PASSWORD` for variable interpolation in the compose file. Without it, you'll get: `required variable DB_PASSWORD is missing a value`.
+</Warning>
 
 This starts 4 services:
 
@@ -68,7 +72,7 @@ docker-compose down
 docker-compose down -v
 
 # Rebuild a single service
-docker-compose up -d --build backend
+docker-compose --env-file backend/.env up -d --build backend
 ```
 
 ## Next Steps

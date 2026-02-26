@@ -1,5 +1,5 @@
 # VoxArena Docker Compose
-# Usage: docker-compose up -d --build
+# Usage: docker-compose --env-file backend/.env up -d --build
 version: "3.8"
 
 services:

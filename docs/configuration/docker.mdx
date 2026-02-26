@@ -45,13 +45,21 @@ The database password is configured via `DB_PASSWORD` in `backend/.env`:
 DB_PASSWORD=your_password_here
 ```
 
-Docker Compose reads this via `env_file` and uses it for both the PostgreSQL container and the backend's `DATABASE_URL`. If `DB_PASSWORD` is not set, Docker Compose will refuse to start with an error message.
+Docker Compose uses `${DB_PASSWORD}` to set the PostgreSQL password and build the backend's `DATABASE_URL`. If `DB_PASSWORD` is not set, Docker Compose will refuse to start with an error message.
+
+<Warning>
+Docker Compose's `env_file` directive only passes variables to the **container** at runtime. It does **not** make them available for `${VAR}` interpolation in the compose file itself. You must use `--env-file` to load `backend/.env` for compose-file interpolation:
+
+```bash
+docker-compose --env-file backend/.env up -d --build
+```
+</Warning>
 
 ## Commands
 
 ```bash
 # Start all services
-docker-compose up -d --build
+docker-compose --env-file backend/.env up -d --build
 
 # View all logs
 docker-compose logs -f
@@ -66,5 +74,5 @@ docker-compose down
 docker-compose down -v
 
 # Rebuild one service
-docker-compose up -d --build backend
+docker-compose --env-file backend/.env up -d --build backend
 ```
