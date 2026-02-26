@@ -113,7 +113,7 @@ interface DashboardLayoutProps {
     activeNav?: string;
 }
 
-export default async function DashboardLayout({ children, activeNav = "Overview" }: DashboardLayoutProps) {
+export default async function DashboardLayout({ children, activeNav = "Dashboard" }: DashboardLayoutProps) {
     const user = await currentUser();
 
     return (
@@ -144,17 +144,17 @@ export default async function DashboardLayout({ children, activeNav = "Overview"
 
                 {/* Navigation */}
                 <nav className="flex-1 px-3 py-2 space-y-6 overflow-y-auto">
-                    {/* Overview */}
+                    {/* Dashboard */}
                     <div>
                         <Link
                             href="/dashboard"
-                            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${activeNav === "Overview"
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${activeNav === "Dashboard"
                                 ? "bg-primary/10 text-primary font-medium"
                                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 }`}
                         >
                             <HomeIcon className="h-4 w-4" />
-                            Overview
+                            Dashboard
                         </Link>
                     </div>
 
