@@ -11,6 +11,8 @@ import asyncio
 import json
 import logging
 import os
+import signal
+import sys
 
 import httpx
 from dotenv import load_dotenv
@@ -712,5 +714,12 @@ async def execute_webhook(url: str, method: str, headers: list, body: dict | Non
         raise e
 
 
+def _handle_sigterm(signum, frame):
+    """Handle SIGTERM for graceful shutdown on platforms like Render."""
+    logger.info("SIGTERM received — shutting down gracefully...")
+    sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _handle_sigterm)
     agents.cli.run_app(server)

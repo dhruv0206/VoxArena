@@ -1,0 +1,121 @@
+# VoxArena — Render Infrastructure as Code
+# Docs: https://docs.render.com/infrastructure-as-code
+#
+# After connecting this repo to Render, it will auto-detect this file
+# and create/update all services defined here.
+#
+# IMPORTANT: After first deploy, set the actual values for every env var
+# marked "sync: false" (secrets) via the Render dashboard.
+# Also update NEXT_PUBLIC_API_URL and INTERNAL_API_URL once you know
+# the backend's Render URL.
+
+databases:
+  - name: voxarena-db
+    plan: starter
+    databaseName: voxarena
+    user: voxarena
+
+services:
+  # ── Backend API (FastAPI) ─────────────────────────────────
+  - type: web
+    name: voxarena-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      # Database — auto-injected by Render managed Postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: voxarena-db
+          property: connectionString
+      # CORS — set to your frontend Render URL after first deploy
+      - key: FRONTEND_URL
+        value: http://localhost:3000
+      # LiveKit
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      # Resemble AI
+      - key: RESEMBLE_API_KEY
+        sync: false
+      # Twilio
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_SIP_DOMAIN
+        sync: false
+      # LiveKit SIP
+      - key: LIVEKIT_SIP_TRUNK_ID
+        sync: false
+      # Server
+      - key: DEBUG
+        value: "false"
+
+  # ── Frontend (Next.js) ────────────────────────────────────
+  - type: web
+    name: voxarena-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    envVars:
+      # API URL — update to your backend Render URL after first deploy
+      - key: NEXT_PUBLIC_API_URL
+        value: https://voxarena-backend.onrender.com/api
+      # Server-side API URL (Render private network)
+      - key: INTERNAL_API_URL
+        value: https://voxarena-backend.onrender.com/api
+      # Clerk Auth
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      # LiveKit (server-side only, used in API route)
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+
+  # ── Voice Agent (LiveKit Background Worker) ───────────────
+  - type: worker
+    name: voxarena-agent
+    runtime: docker
+    dockerfilePath: ./agent/Dockerfile
+    dockerContext: ./agent
+    plan: starter
+    envVars:
+      # Backend API — update to your backend Render URL after first deploy
+      - key: BACKEND_API_URL
+        value: https://voxarena-backend.onrender.com/api
+      # LiveKit
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      # STT
+      - key: ASSEMBLYAI_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      # LLM
+      - key: GOOGLE_API_KEY
+        sync: false
+      # TTS
+      - key: RESEMBLE_API_KEY
+        sync: false
+      - key: RESEMBLE_PROJECT_UUID
+        sync: false
+      - key: RESEMBLE_VOICE_UUID
+        sync: false

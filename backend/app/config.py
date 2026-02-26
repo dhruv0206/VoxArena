@@ -29,8 +29,13 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = True
 
-    # CORS
+    # CORS — comma-separated origins, e.g. "http://localhost:3000,https://voxarena.onrender.com"
     frontend_url: str = "http://localhost:3000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse frontend_url into a list of allowed origins."""
+        return [u.strip() for u in self.frontend_url.split(",") if u.strip()]
 
     @model_validator(mode="after")
     def build_database_url(self):

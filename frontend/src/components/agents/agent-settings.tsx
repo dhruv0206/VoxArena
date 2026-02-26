@@ -390,7 +390,7 @@ export function AgentSettings({ agent, userId }: AgentSettingsProps) {
 
         try {
             const response = await fetch(
-                `http://localhost:8000/api/agents/${agent.id}`,
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/agents/${agent.id}`,
                 {
                     method: 'DELETE',
                     headers: {
