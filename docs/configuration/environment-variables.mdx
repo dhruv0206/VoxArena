@@ -11,8 +11,8 @@ VoxArena uses three `.env` files, one per service.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DB_PASSWORD` | Yes | PostgreSQL password (used to build `DATABASE_URL` and by Docker Compose) |
-| `DATABASE_URL` | No | Full PostgreSQL connection string (overrides `DB_PASSWORD` if set) |
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL password (used by both PostgreSQL and backend to build `DATABASE_URL`) |
+| `DATABASE_URL` | No | Full PostgreSQL connection string (overrides auto-built URL if set) |
 | `LIVEKIT_API_KEY` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
 | `LIVEKIT_API_SECRET` | Yes | From [LiveKit Cloud](https://cloud.livekit.io) |
 | `LIVEKIT_URL` | Yes | LiveKit server URL (e.g., `wss://your-project.livekit.cloud`) |

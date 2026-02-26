@@ -91,7 +91,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
 cp agent/.env.example agent/.env
 # Edit each .env file with your API keys
-docker-compose --env-file backend/.env up -d --build
+docker-compose up -d --build
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with Clerk.

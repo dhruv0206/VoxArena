@@ -1,5 +1,5 @@
 # VoxArena Docker Compose
-# Usage: docker-compose --env-file backend/.env up -d --build
+# Usage: docker-compose up -d --build
 version: "3.8"
 
 services:
@@ -14,7 +14,6 @@ services:
     environment:
       POSTGRES_DB: voxarena
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -37,8 +36,6 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Override DATABASE_URL for Docker networking
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/voxarena
       - DB_HOST=postgres
     ports:
       - "8000:8000"

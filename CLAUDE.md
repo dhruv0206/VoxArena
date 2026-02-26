@@ -11,9 +11,9 @@ Open-source voice AI platform with three services.
 | agent    | Python, LiveKit, AssemblyAI, Gemini, Resemble AI   | N/A                   |
 
 ## Database
-Main: postgresql://postgres:${DB_PASSWORD}@localhost:5432/voxarena
-Test: postgresql://postgres:${DB_PASSWORD}@localhost:5432/voxarena_test
-(Set DB_PASSWORD in your .env file)
+Main: postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432/voxarena
+Test: postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432/voxarena_test
+(Set POSTGRES_PASSWORD in backend/.env)
 
 ## How to Run Each Service
 frontend → cd frontend && npm run dev

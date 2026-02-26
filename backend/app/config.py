@@ -5,8 +5,9 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Database
-    db_password: str = ""
+    postgres_password: str = ""
     database_url: str = ""
+    db_host: str = "localhost"
 
     # LiveKit
     livekit_api_key: str = ""
@@ -34,7 +35,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def build_database_url(self):
         if not self.database_url:
-            self.database_url = f"postgresql://postgres:{self.db_password}@localhost:5432/voxarena"
+            self.database_url = f"postgresql://postgres:{self.postgres_password}@{self.db_host}:5432/voxarena"
         return self
 
     class Config:

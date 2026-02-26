@@ -102,7 +102,7 @@ The agent connects directly to LiveKit Cloud and joins rooms when dispatched.
 <AccordionGroup>
   <Accordion title="Backend can't connect to database">
     - Ensure PostgreSQL is running
-    - Verify `DB_PASSWORD` in `backend/.env` matches your PostgreSQL credentials
+    - Verify `POSTGRES_PASSWORD` in `backend/.env` matches your PostgreSQL credentials
     - For Docker: the database takes a few seconds to initialize on first run
   </Accordion>
   <Accordion title="Frontend shows 'Failed to fetch' errors">
